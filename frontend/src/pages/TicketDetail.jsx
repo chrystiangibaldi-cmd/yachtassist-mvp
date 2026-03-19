@@ -191,16 +191,22 @@ const TicketDetail = () => {
                 <span>Importo intervento:</span>
                 <span className="font-semibold">€{ticket.final_price}</span>
               </div>
-              <div className="flex items-center justify-between text-slate-600 text-sm">
-                <span>Commissione YachtAssist (15%):</span>
-                <span>€{ticket.commission}</span>
-              </div>
-              <div className="border-t border-slate-300 pt-2 mt-2">
-                <div className="flex items-center justify-between text-[#0A2342] font-semibold text-lg">
-                  <span>Pagamento al tecnico:</span>
-                  <span>€{ticket.technician_payment}</span>
-                </div>
-              </div>
+              
+              {/* Show commission and payment breakdown only to technician */}
+              {user.role === 'technician' && (
+                <>
+                  <div className="flex items-center justify-between text-slate-600 text-sm">
+                    <span>Commissione YachtAssist (15%):</span>
+                    <span>€{ticket.commission}</span>
+                  </div>
+                  <div className="border-t border-slate-300 pt-2 mt-2">
+                    <div className="flex items-center justify-between text-[#1D9E75] font-bold text-lg">
+                      <span>Pagamento a te:</span>
+                      <span>€{ticket.technician_payment}</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
