@@ -14,6 +14,36 @@ export const API = `${BACKEND_URL}/api`;
 
 export const UserContext = React.createContext();
 
+const ResetDemo = () => {
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    const resetData = async () => {
+      try {
+        await axios.post(`${API}/reset-demo`);
+        localStorage.removeItem('yacht_user');
+        localStorage.removeItem('yacht_token');
+        setTimeout(() => {
+          navigate('/');
+        }, 500);
+      } catch (error) {
+        console.error('Reset error:', error);
+        navigate('/');
+      }
+    };
+    resetData();
+  }, [navigate]);
+  
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-[#0A2342] mb-2">Resetting demo data...</h2>
+        <p className="text-slate-600">Redirecting to login...</p>
+      </div>
+    </div>
+  );
+};
+
 function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
@@ -46,6 +76,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Login />} />
+          <Route path="/reset-demo" element={<ResetDemo />} />
           <Route path="/owner/dashboard" element={user?.role === 'owner' ? <OwnerDashboard /> : <Navigate to="/" />} />
           <Route path="/owner/checklist" element={user?.role === 'owner' ? <Checklist /> : <Navigate to="/" />} />
           <Route path="/owner/ticket/create" element={user?.role === 'owner' ? <CreateTicket /> : <Navigate to="/" />} />

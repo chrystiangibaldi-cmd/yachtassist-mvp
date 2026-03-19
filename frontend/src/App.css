@@ -21,3 +21,24 @@ h1, h2, h3, h4, h5, h6 {
 .App {
   min-height: 100vh;
 }
+
+/* Hide Emergent badge - comprehensive selectors */
+[href*="emergent.sh"],
+[href*="emergent"],
+a[href*="Emergent"],
+button:has-text("Made with Emergent"),
+div:has(> [href*="emergent"]),
+[class*="emergent"],
+[id*="emergent"],
+div[style*="position: fixed"][style*="bottom"],
+div[style*="position: fixed"][style*="right"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Target the specific badge element */
+body > div:last-child {
+  display: none !important;
+}
