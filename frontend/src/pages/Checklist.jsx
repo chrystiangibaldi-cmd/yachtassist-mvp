@@ -119,7 +119,7 @@ const Checklist = () => {
                         </span>
                         {item.is_new_2025 && (
                           <span className="px-3 py-1 bg-red-600 text-white rounded-full text-xs font-semibold">
-                            NUOVO 2025
+                            SCADENZA OTT 2025
                           </span>
                         )}
                       </div>
