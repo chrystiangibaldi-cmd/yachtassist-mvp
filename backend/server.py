@@ -106,13 +106,20 @@ class CloseTicketRequest(BaseModel):
     documents: List[str]
 
 # Seed demo data
-async def seed_data():
-    # Always reset to fresh state - clear all collections
-    await db.users.delete_many({})
-    await db.yachts.delete_many({})
-    await db.checklist_items.delete_many({})
-    await db.technician_profiles.delete_many({})
-    await db.tickets.delete_many({})
+async def seed_data(force_reset=False):
+    # Only reset if forced or if database is empty
+    if not force_reset:
+        existing_users = await db.users.count_documents({})
+        if existing_users > 0:
+            return
+    
+    # Clear all collections if force reset
+    if force_reset:
+        await db.users.delete_many({})
+        await db.yachts.delete_many({})
+        await db.checklist_items.delete_many({})
+        await db.technician_profiles.delete_many({})
+        await db.tickets.delete_many({})
     
     users = [
         {
@@ -324,7 +331,7 @@ async def close_ticket(ticket_id: str, request: CloseTicketRequest):
 @api_router.post("/reset-demo")
 async def reset_demo():
     """Reset demo data to initial state - hidden endpoint for demo purposes"""
-    await seed_data()
+    await seed_data(force_reset=True)
     logger.info("Demo data reset to initial state")
     return {"success": True, "message": "Demo data reset successfully"}
 
