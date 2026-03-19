@@ -1,0 +1,106 @@
+{
+  "identity": {
+    "persona": "E1: The Anti-AI Designer",
+    "mission": "Create a professional, high-trust maritime marketplace demo that investors will love.",
+    "principles": [
+      "Trust & Clarity First: For investors, clarity = competence.",
+      "Maritime Luxury: Use Navy/Teal/White to evoke the sea without being kitschy.",
+      "Data Density: Dashboards must look functional, not empty.",
+      "Italian Elegance: Typography and spacing should feel sophisticated."
+    ]
+  },
+  "context": {
+    "app_name": "YachtAssist",
+    "type": "SaaS Marketplace Demo",
+    "audience": "Investors, Yacht Owners, Technicians (Italy)",
+    "tone": "Professional, Secure, Efficient, Maritime"
+  },
+  "visual_style": {
+    "theme": "light",
+    "colors": {
+      "primary": "#0A2342",
+      "secondary": "#1D9E75",
+      "background": "#F8FAFC",
+      "surface": "#FFFFFF",
+      "text_primary": "#0F172A",
+      "text_secondary": "#64748B",
+      "border": "#E2E8F0",
+      "success": "#1D9E75",
+      "warning": "#F59E0B",
+      "error": "#EF4444"
+    },
+    "typography": {
+      "font_family_heading": "Manrope, sans-serif",
+      "font_family_body": "Inter, sans-serif",
+      "scale": {
+        "h1": "text-4xl font-bold tracking-tight text-[#0A2342]",
+        "h2": "text-3xl font-semibold tracking-tight text-[#0A2342]",
+        "h3": "text-xl font-medium text-[#0A2342]",
+        "body": "text-base text-slate-600 leading-relaxed",
+        "small": "text-sm text-slate-500"
+      }
+    },
+    "spacing": "Relaxed but structured. Use p-6 and p-8 for cards to give a premium feel.",
+    "radius": "rounded-lg"
+  },
+  "layout_strategy": {
+    "dashboard": "Bento Grid (Mode B)",
+    "login": "Split screen: Left side Login Form, Right side Maritime Imagery",
+    "grid_system": "Tailwind Grid (grid-cols-1 md:grid-cols-12 gap-6)"
+  },
+  "components": {
+    "cards": {
+      "style": "bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200",
+      "padding": "p-6"
+    },
+    "buttons": {
+      "primary": "bg-[#0A2342] text-white hover:bg-[#0A2342]/90 h-11 px-8 rounded-md font-medium transition-colors",
+      "secondary": "bg-[#1D9E75] text-white hover:bg-[#1D9E75]/90 h-11 px-8 rounded-md font-medium transition-colors",
+      "outline": "border-2 border-[#0A2342] text-[#0A2342] hover:bg-slate-50 h-11 px-8 rounded-md font-medium transition-colors"
+    },
+    "inputs": "h-11 border-slate-200 focus:border-[#0A2342] focus:ring-1 focus:ring-[#0A2342] rounded-md",
+    "badges": {
+      "compliance": "bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full text-xs font-medium",
+      "pending": "bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full text-xs font-medium",
+      "technician": "bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md text-xs font-medium"
+    }
+  },
+  "image_assets": {
+    "login_background": {
+      "url": "https://images.unsplash.com/photo-1587059481645-b3a17becd6e0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA4Mzl8MHwxfHNlYXJjaHwxfHxibHVlJTIwb2NlYW58ZW58MHx8fHwxNzczOTIxNTg3fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Blue Mediterranean Sea",
+      "usage": "Right side of login screen, full height cover"
+    },
+    "technicians": [
+      {
+        "name": "Marco Rossi",
+        "role": "Marine Mechanic",
+        "url": "https://images.unsplash.com/photo-1517524206127-48bbd363f3d7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA4Mzl8MHwxfHNlYXJjaHwzfHxtZWNoYW5pY3xlbnwwfHx8fDE3NzM5MjE1ODB8MA&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "name": "Giulia Bianchi",
+        "role": "Electrical Specialist",
+        "url": "https://images.pexels.com/photos/279949/pexels-photo-279949.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+      },
+      {
+        "name": "Luca Verdi",
+        "role": "Hull Technician",
+        "url": "https://images.pexels.com/photos/6720529/pexels-photo-6720529.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+      }
+    ],
+    "owner_profile": {
+      "url": "https://images.unsplash.com/photo-1560250097-0b93528c311a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzZ8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMHBvcnRyYWl0fGVufDB8fHx8MTc3MzkyMTU4MXww&ixlib=rb-4.1.0&q=85",
+      "alt": "Yacht Owner Profile"
+    }
+  },
+  "universal_guidelines": [
+    "Use 'Manrope' for all headings and 'Inter' for body text.",
+    "Do not use gradients for backgrounds. Use solid colors or subtle patterns.",
+    "Ensure all buttons have hover states and active states.",
+    "Use Lucide React icons for UI elements (Anchor, User, CheckCircle, etc.).",
+    "Cards should have a subtle border (border-slate-200) and shadow-sm.",
+    "Dashboard widgets must fill their grid cells (h-full).",
+    "Use the color palette strictly: Navy for Brand/Headers, Teal for Primary Actions.",
+    "Add data-testid to all interactive elements."
+  ]
+}
