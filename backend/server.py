@@ -304,6 +304,11 @@ async def get_ticket(ticket_id: str):
 
 @api_router.post("/tickets/{ticket_id}/assign")
 async def assign_technician(ticket_id: str, request: AssignTechnicianRequest):
+    # Check if ticket exists first
+    ticket = await db.tickets.find_one({"id": ticket_id}, {"_id": 0})
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
     # Define quote items when technician is assigned
     quote_items = [
         {
@@ -323,7 +328,8 @@ async def assign_technician(ticket_id: str, request: AssignTechnicianRequest):
         }
     ]
     
-    result = await db.tickets.update_one(
+    # Update ticket - always succeeds if ticket exists
+    await db.tickets.update_one(
         {"id": ticket_id},
         {"$set": {
             "technician_id": request.technician_id,
@@ -332,8 +338,6 @@ async def assign_technician(ticket_id: str, request: AssignTechnicianRequest):
             "quote_items": quote_items
         }}
     )
-    if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Ticket not found")
     return {"success": True}
 
 @api_router.post("/tickets/{ticket_id}/close")
