@@ -57,6 +57,12 @@ class TechnicianProfile(BaseModel):
     eco_certified: bool = False
     avatar_url: Optional[str] = None
 
+class QuoteItem(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    voce: str
+    descrizione: str
+    importo: int
+
 class Ticket(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
@@ -74,6 +80,7 @@ class Ticket(BaseModel):
     marina: str
     appointment: Optional[str] = None
     documents: List[str] = []
+    quote_items: Optional[List[QuoteItem]] = None
     created_at: str
 
 class LoginRequest(BaseModel):
@@ -297,12 +304,32 @@ async def get_ticket(ticket_id: str):
 
 @api_router.post("/tickets/{ticket_id}/assign")
 async def assign_technician(ticket_id: str, request: AssignTechnicianRequest):
+    # Define quote items when technician is assigned
+    quote_items = [
+        {
+            "voce": "Fornitura zattera ISO 9650-1",
+            "descrizione": "Zattera costiera omologata",
+            "importo": 180
+        },
+        {
+            "voce": "Sostituzione razzi paracadute × 2",
+            "descrizione": "Razzi Comet 60m, scad. 2028",
+            "importo": 60
+        },
+        {
+            "voce": "Manodopera",
+            "descrizione": "Installazione e verifica",
+            "importo": 40
+        }
+    ]
+    
     result = await db.tickets.update_one(
         {"id": ticket_id},
         {"$set": {
             "technician_id": request.technician_id,
             "status": "assegnato",
-            "appointment": "Sab 5 apr · 09:30 · Marina di Pisa pontile B"
+            "appointment": "Sab 5 apr · 09:30 · Marina di Pisa pontile B",
+            "quote_items": quote_items
         }}
     )
     if result.modified_count == 0:

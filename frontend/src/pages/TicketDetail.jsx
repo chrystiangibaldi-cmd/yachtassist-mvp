@@ -182,6 +182,37 @@ const TicketDetail = () => {
           </div>
         )}
 
+        {/* Quote Breakdown - Show only to owner when quote items exist */}
+        {user.role === 'owner' && ticket.quote_items && ticket.quote_items.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6">
+            <h3 className="text-lg font-semibold text-[#0A2342] mb-4">Dettaglio preventivo</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="text-left py-3 px-2 text-sm font-semibold text-[#0A2342]">Voce</th>
+                    <th className="text-left py-3 px-2 text-sm font-semibold text-[#0A2342]">Descrizione</th>
+                    <th className="text-right py-3 px-2 text-sm font-semibold text-[#0A2342]">Importo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ticket.quote_items.map((item, idx) => (
+                    <tr key={idx} className="border-b border-slate-100">
+                      <td className="py-3 px-2 text-sm text-slate-700 font-medium">{item.voce}</td>
+                      <td className="py-3 px-2 text-sm text-slate-600">{item.descrizione}</td>
+                      <td className="py-3 px-2 text-sm text-slate-700 text-right font-medium">€{item.importo}</td>
+                    </tr>
+                  ))}
+                  <tr className="border-t-2 border-slate-300">
+                    <td colSpan="2" className="py-3 px-2 text-base font-bold text-[#0A2342]">Totale</td>
+                    <td className="py-3 px-2 text-base font-bold text-[#0A2342] text-right">€{ticket.final_price}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* Financial Section */}
         {ticket.final_price && (
           <div className="bg-slate-50 border border-slate-200 rounded-lg shadow-sm p-6 mb-6">

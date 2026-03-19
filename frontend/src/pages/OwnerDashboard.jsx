@@ -179,7 +179,11 @@ const OwnerDashboard = () => {
                   ))}
                 </div>
                 <div className="mt-2 text-sm font-medium text-[#0A2342]">
-                  Stima: €{ticket.price_min} — €{ticket.price_max}
+                  {ticket.quote_items && ticket.quote_items.length > 0 ? (
+                    <>Totale: €{ticket.final_price}</>
+                  ) : (
+                    <>Stima: €{ticket.price_min} — €{ticket.price_max}</>
+                  )}
                 </div>
               </div>
             ))}
