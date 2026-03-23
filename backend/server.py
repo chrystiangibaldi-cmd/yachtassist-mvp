@@ -376,7 +376,33 @@ async def login(request: RealLoginRequest):
 @api_router.get("/dashboard/owner", response_model=OwnerDashboard)
 async def get_owner_dashboard(user_id: str = "owner-1"):
     user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
     yacht = await db.yachts.find_one({"owner_id": user_id}, {"_id": 0})
+    
+    # Handle case where user doesn't have a yacht yet (new registered users)
+    if not yacht:
+        # Return dashboard with placeholder yacht data
+        return OwnerDashboard(
+            user=User(**user),
+            yacht=Yacht(
+                id="pending",
+                name="Nessuna imbarcazione",
+                model="",
+                owner_id=user_id,
+                marina="",
+                category="",
+                distance="",
+                compliance_score=0
+            ),
+            open_tickets=0,
+            active_interventions=0,
+            season="Stagione 2025",
+            recent_tickets=[]
+        )
+    
     tickets = await db.tickets.find({"owner_id": user_id}, {"_id": 0}).to_list(10)
     
     open_tickets = len([t for t in tickets if t["status"] in ["aperto", "assegnato"]])
