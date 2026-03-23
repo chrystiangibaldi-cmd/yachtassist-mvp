@@ -468,40 +468,52 @@ async def assign_technician(ticket_id: str, request: AssignTechnicianRequest):
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     
-    # Define quote items when technician is assigned
-    quote_items = [
-        {
-            "voce": "Fornitura zattera ISO 9650-1",
-            "descrizione": "Zattera costiera omologata",
-            "importo": 180
-        },
-        {
-            "voce": "Sostituzione razzi paracadute × 2",
-            "descrizione": "Razzi Comet 60m, scad. 2028",
-            "importo": 60
-        },
-        {
-            "voce": "Manodopera",
-            "descrizione": "Installazione e verifica",
-            "importo": 40
-        }
-    ]
+    # Only add quote items for the demo compliance ticket (YA-2025-0847)
+    # Generic tickets don't get quotes until technician provides them
+    quote_items = None
+    if ticket_id == "YA-2025-0847":
+        quote_items = [
+            {
+                "voce": "Fornitura zattera ISO 9650-1",
+                "descrizione": "Zattera costiera omologata",
+                "importo": 180
+            },
+            {
+                "voce": "Sostituzione razzi paracadute × 2",
+                "descrizione": "Razzi Comet 60m, scad. 2028",
+                "importo": 60
+            },
+            {
+                "voce": "Manodopera",
+                "descrizione": "Installazione e verifica",
+                "importo": 40
+            }
+        ]
     
     # Update ticket - always succeeds if ticket exists
+    update_data = {
+        "technician_id": request.technician_id,
+        "status": "assegnato",
+        "appointment": "Sab 5 apr · 09:30 · Marina di Pisa pontile B"
+    }
+    
+    # Only add quote_items if it's the compliance ticket
+    if quote_items:
+        update_data["quote_items"] = quote_items
+    
     await db.tickets.update_one(
         {"id": ticket_id},
-        {"$set": {
-            "technician_id": request.technician_id,
-            "status": "assegnato",
-            "appointment": "Sab 5 apr · 09:30 · Marina di Pisa pontile B",
-            "quote_items": quote_items
-        }}
+        {"$set": update_data}
     )
     return {"success": True}
 
 @api_router.post("/tickets/create")
 async def create_generic_ticket(request: CreateTicketRequest, user_id: str):
     """Create a new generic ticket from request flow"""
+    # Fetch user's yacht if they have one
+    yacht = await db.yachts.find_one({"owner_id": user_id}, {"_id": 0})
+    yacht_id = yacht["id"] if yacht else "pending"
+    
     # Generate unique ticket ID
     import random
     ticket_number = random.randint(1000, 9999)
@@ -520,7 +532,7 @@ async def create_generic_ticket(request: CreateTicketRequest, user_id: str):
     # Create ticket document
     ticket_doc = {
         "id": ticket_id,
-        "yacht_id": "pending",  # Will be updated when user adds yacht
+        "yacht_id": yacht_id,
         "owner_id": user_id,
         "technician_id": None,
         "status": "aperto",
@@ -537,7 +549,7 @@ async def create_generic_ticket(request: CreateTicketRequest, user_id: str):
         "marina": request.marina,
         "appointment": None,
         "documents": [],
-        "quote_items": None,
+        "quote_items": None,  # No quote until technician provides one
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
