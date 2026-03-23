@@ -72,8 +72,13 @@ class Ticket(BaseModel):
     owner_id: str
     technician_id: Optional[str] = None
     status: Literal["aperto", "assegnato", "accettato", "eseguito", "chiuso"]
-    urgency: Literal["alta", "media", "bassa"]
+    urgency: Literal["alta", "media", "bassa", "emergenza"]
     work_items: List[str]
+    # Generic ticket fields
+    category: Optional[str] = None
+    description: Optional[str] = None
+    photos: Optional[List[str]] = []
+    # Pricing
     price_min: int
     price_max: int
     final_price: Optional[int] = None
@@ -84,6 +89,13 @@ class Ticket(BaseModel):
     documents: List[str] = []
     quote_items: Optional[List[QuoteItem]] = None
     created_at: str
+
+class CreateTicketRequest(BaseModel):
+    category: str
+    description: str
+    urgency: Literal["normale", "urgente", "emergenza"]
+    marina: str
+    photos: Optional[List[str]] = []
 
 class LoginRequest(BaseModel):
     role: Literal["owner", "technician"]
@@ -486,6 +498,53 @@ async def assign_technician(ticket_id: str, request: AssignTechnicianRequest):
         }}
     )
     return {"success": True}
+
+@api_router.post("/tickets/create")
+async def create_generic_ticket(request: CreateTicketRequest, user_id: str):
+    """Create a new generic ticket from request flow"""
+    # Generate unique ticket ID
+    import random
+    ticket_number = random.randint(1000, 9999)
+    ticket_id = f"YA-2025-{ticket_number}"
+    
+    # Map urgency to work items description
+    work_item = f"{request.category}: {request.description[:50]}..."
+    
+    # Map urgency
+    urgency_map = {
+        "normale": "media",
+        "urgente": "alta",
+        "emergenza": "alta"
+    }
+    
+    # Create ticket document
+    ticket_doc = {
+        "id": ticket_id,
+        "yacht_id": "pending",  # Will be updated when user adds yacht
+        "owner_id": user_id,
+        "technician_id": None,
+        "status": "aperto",
+        "urgency": urgency_map.get(request.urgency, "media"),
+        "work_items": [work_item],
+        "category": request.category,
+        "description": request.description,
+        "photos": request.photos or [],
+        "price_min": 100,
+        "price_max": 500,
+        "final_price": None,
+        "commission": None,
+        "technician_payment": None,
+        "marina": request.marina,
+        "appointment": None,
+        "documents": [],
+        "quote_items": None,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.tickets.insert_one(ticket_doc)
+    ticket_doc.pop("_id", None)
+    
+    return {"ticket": Ticket(**ticket_doc), "success": True}
 
 @api_router.post("/tickets/{ticket_id}/close")
 async def close_ticket(ticket_id: str, request: CloseTicketRequest):

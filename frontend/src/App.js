@@ -10,6 +10,7 @@ import TechnicianDashboard from '@/pages/TechnicianDashboard';
 import Checklist from '@/pages/Checklist';
 import CreateTicket from '@/pages/CreateTicket';
 import TicketDetail from '@/pages/TicketDetail';
+import RequestIntervention from '@/pages/RequestIntervention';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -89,6 +90,7 @@ function App() {
           {/* Protected Owner routes */}
           <Route path="/owner/dashboard" element={user?.role === 'owner' ? <OwnerDashboard /> : <Navigate to="/login" />} />
           <Route path="/owner/checklist" element={user?.role === 'owner' ? <Checklist /> : <Navigate to="/login" />} />
+          <Route path="/owner/request" element={user?.role === 'owner' ? <RequestIntervention /> : <Navigate to="/login" />} />
           <Route path="/owner/ticket/create" element={user?.role === 'owner' ? <CreateTicket /> : <Navigate to="/login" />} />
           <Route path="/owner/ticket/:id" element={user?.role === 'owner' ? <TicketDetail /> : <Navigate to="/login" />} />
           
