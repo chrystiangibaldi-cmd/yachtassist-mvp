@@ -114,19 +114,17 @@ class CloseTicketRequest(BaseModel):
 
 # Seed demo data
 async def seed_data(force_reset=False):
-    # Only reset if forced or if database is empty
-    if not force_reset:
-        existing_users = await db.users.count_documents({})
-        if existing_users > 0:
-            return
-    
-    # Clear all collections if force reset
     if force_reset:
+        # Only when explicitly resetting via /reset-demo endpoint
         await db.users.delete_many({})
         await db.yachts.delete_many({})
         await db.checklist_items.delete_many({})
         await db.technician_profiles.delete_many({})
         await db.tickets.delete_many({})
+        logger.info("Force reset: All collections cleared")
+    
+    # Use upsert logic - insert only if not exists, never create duplicates
+    # This ensures startup never modifies existing data
     
     users = [
         {
@@ -156,7 +154,12 @@ async def seed_data(force_reset=False):
             "role": "technician"
         }
     ]
-    await db.users.insert_many(users)
+    for user in users:
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$setOnInsert": user},
+            upsert=True
+        )
     
     yachts = [{
         "id": "yacht-1",
@@ -168,7 +171,12 @@ async def seed_data(force_reset=False):
         "distance": "12 miglia",
         "compliance_score": 67
     }]
-    await db.yachts.insert_many(yachts)
+    for yacht in yachts:
+        await db.yachts.update_one(
+            {"id": yacht["id"]},
+            {"$setOnInsert": yacht},
+            upsert=True
+        )
     
     checklist_items = [
         {"id": "item-1", "yacht_id": "yacht-1", "name": "Giubbotti 150N con luce automatica", "status": "conforme", "is_new_2025": True},
@@ -178,7 +186,12 @@ async def seed_data(force_reset=False):
         {"id": "item-5", "yacht_id": "yacht-1", "name": "Radio VHF", "status": "conforme", "is_new_2025": False},
         {"id": "item-6", "yacht_id": "yacht-1", "name": "Iscrizione ATCN", "status": "conforme", "is_new_2025": True}
     ]
-    await db.checklist_items.insert_many(checklist_items)
+    for item in checklist_items:
+        await db.checklist_items.update_one(
+            {"id": item["id"]},
+            {"$setOnInsert": item},
+            upsert=True
+        )
     
     technician_profiles = [
         {
@@ -212,27 +225,43 @@ async def seed_data(force_reset=False):
             "avatar_url": "https://images.pexels.com/photos/6720529/pexels-photo-6720529.jpeg?w=200&h=200&fit=crop"
         }
     ]
-    await db.technician_profiles.insert_many(technician_profiles)
+    for profile in technician_profiles:
+        await db.technician_profiles.update_one(
+            {"id": profile["id"]},
+            {"$setOnInsert": profile},
+            upsert=True
+        )
     
-    tickets = [{
-        "id": "YA-2025-0847",
-        "yacht_id": "yacht-1",
-        "owner_id": "owner-1",
-        "technician_id": None,
-        "status": "aperto",
-        "urgency": "alta",
-        "work_items": ["Fornitura zattera ISO 9650-1", "Sostituzione razzi paracadute × 2"],
-        "price_min": 180,
-        "price_max": 380,
-        "final_price": 280,
-        "commission": 42,
-        "technician_payment": 238,
-        "marina": "Marina di Pisa",
-        "appointment": None,
-        "documents": [],
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }]
-    await db.tickets.insert_many(tickets)
+    # Critical: Check if ticket YA-2025-0847 exists before creating
+    existing_ticket = await db.tickets.find_one({"id": "YA-2025-0847"})
+    if not existing_ticket:
+        ticket = {
+            "id": "YA-2025-0847",
+            "yacht_id": "yacht-1",
+            "owner_id": "owner-1",
+            "technician_id": None,
+            "status": "aperto",
+            "urgency": "alta",
+            "work_items": ["Fornitura zattera ISO 9650-1", "Sostituzione razzi paracadute × 2"],
+            "price_min": 180,
+            "price_max": 380,
+            "final_price": 280,
+            "commission": 42,
+            "technician_payment": 238,
+            "marina": "Marina di Pisa",
+            "appointment": None,
+            "documents": [],
+            "quote_items": None,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.tickets.update_one(
+            {"id": ticket["id"]},
+            {"$setOnInsert": ticket},
+            upsert=True
+        )
+        logger.info("Demo ticket YA-2025-0847 created")
+    else:
+        logger.info("Demo ticket YA-2025-0847 already exists, skipping creation")
 
 @app.on_event("startup")
 async def startup_event():
