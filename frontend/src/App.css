@@ -22,23 +22,26 @@ h1, h2, h3, h4, h5, h6 {
   min-height: 100vh;
 }
 
-/* Hide Emergent badge - comprehensive selectors */
+/* Force-hide Emergent badge permanently across all pages */
+[class*="emergent"],
+[id*="emergent"],
+[class*="Emergent"],
+[id*="Emergent"],
 [href*="emergent.sh"],
 [href*="emergent"],
 a[href*="Emergent"],
-button:has-text("Made with Emergent"),
 div:has(> [href*="emergent"]),
-[class*="emergent"],
-[id*="emergent"],
+div[class*="badge"],
+div[id*="badge"],
 div[style*="position: fixed"][style*="bottom"],
-div[style*="position: fixed"][style*="right"] {
+div[style*="position: fixed"][style*="right"],
+body > div:last-child[style*="position: fixed"] {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
   pointer-events: none !important;
-}
-
-/* Target the specific badge element */
-body > div:last-child {
-  display: none !important;
+  position: absolute !important;
+  left: -9999px !important;
+  width: 0 !important;
+  height: 0 !important;
 }

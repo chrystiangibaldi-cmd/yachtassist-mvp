@@ -17,9 +17,21 @@ code {
         source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
-/* Hide Emergent badge globally */
-[href*="emergent"] {
+/* Force-hide Emergent badge permanently - applies even after dynamic injection */
+[class*="emergent"],
+[id*="emergent"],
+[class*="Emergent"],
+[id*="Emergent"],
+a[href*="emergent.sh"],
+a[href*="emergent"],
+div[class*="badge"],
+div[id*="badge"] {
   display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  left: -9999px !important;
 }
 
 @layer base {
