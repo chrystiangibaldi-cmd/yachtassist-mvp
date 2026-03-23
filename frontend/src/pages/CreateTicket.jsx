@@ -88,7 +88,7 @@ const CreateTicket = () => {
 
           <div className="border-t border-slate-200 pt-6">
             <h3 className="text-lg font-semibold text-[#0A2342] mb-3">Lavori richiesti:</h3>
-            <ul className="space-y-2 mb-6">
+            <ul className="space-y-2">
               {ticket.work_items.map((item, idx) => (
                 <li key={idx} className="flex items-start gap-2 text-slate-700">
                   <span className="text-[#1D9E75] font-bold">•</span>
@@ -96,12 +96,6 @@ const CreateTicket = () => {
                 </li>
               ))}
             </ul>
-
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-              <p className="text-2xl font-bold text-[#0A2342]">
-                Stima: €{ticket.price_min} — €{ticket.price_max}
-              </p>
-            </div>
           </div>
         </div>
 
