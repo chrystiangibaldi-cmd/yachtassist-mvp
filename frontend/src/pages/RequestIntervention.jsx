@@ -342,14 +342,13 @@ const RequestIntervention = () => {
               {filteredTechnicians.map((tech) => (
                 <div
                   key={tech.id}
-                  className={`bg-white border-2 rounded-lg p-6 transition-all cursor-pointer ${
+                  className={`bg-white border-2 rounded-lg p-6 transition-all ${
                     isEmergency
-                      ? 'border-red-600 animate-pulse'
+                      ? 'border-red-600'
                       : formData.selectedTechnician === tech.id
                       ? 'border-[#1D9E75] bg-[#1D9E75]/5'
                       : 'border-slate-200 hover:border-slate-300'
                   }`}
-                  onClick={() => setFormData({ ...formData, selectedTechnician: tech.id })}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -379,10 +378,33 @@ const RequestIntervention = () => {
                         </div>
                       </div>
                     </div>
-                    {isEmergency && (
-                      <div className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold text-sm animate-pulse">
+                    
+                    {/* Selection Button */}
+                    {isEmergency ? (
+                      <Button
+                        onClick={() => setFormData({ ...formData, selectedTechnician: tech.id })}
+                        className="bg-red-600 hover:bg-red-700 text-white px-6 h-11 rounded-md font-medium animate-pulse"
+                      >
                         DISPONIBILE ORA?
-                      </div>
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => setFormData({ ...formData, selectedTechnician: tech.id })}
+                        className={`px-6 h-11 rounded-md font-medium transition-colors ${
+                          formData.selectedTechnician === tech.id
+                            ? 'bg-[#1D9E75] hover:bg-[#1D9E75]/90 text-white'
+                            : 'bg-white border-2 border-[#1D9E75] text-[#1D9E75] hover:bg-[#1D9E75]/10'
+                        }`}
+                      >
+                        {formData.selectedTechnician === tech.id ? (
+                          <>
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Selezionato
+                          </>
+                        ) : (
+                          'Seleziona'
+                        )}
+                      </Button>
                     )}
                   </div>
                 </div>
