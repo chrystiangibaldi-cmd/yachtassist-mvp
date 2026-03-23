@@ -23,8 +23,21 @@ const TicketDetail = () => {
       const ticketData = ticketRes.data;
       setTicket(ticketData);
 
-      const dashboardRes = await axios.get(`${API}/dashboard/owner?user_id=${ticketData.owner_id}`);
-      setYacht(dashboardRes.data.yacht);
+      // Fetch yacht directly by yacht_id from ticket
+      if (ticketData.yacht_id && ticketData.yacht_id !== 'pending') {
+        try {
+          const yachtRes = await axios.get(`${API}/yachts/${ticketData.yacht_id}`);
+          setYacht(yachtRes.data);
+        } catch (yachtError) {
+          // Fallback to dashboard if direct yacht fetch fails
+          const dashboardRes = await axios.get(`${API}/dashboard/owner?user_id=${ticketData.owner_id}`);
+          setYacht(dashboardRes.data.yacht);
+        }
+      } else {
+        // Fallback for pending yacht - get owner's yacht from dashboard
+        const dashboardRes = await axios.get(`${API}/dashboard/owner?user_id=${ticketData.owner_id}`);
+        setYacht(dashboardRes.data.yacht);
+      }
 
       if (ticketData.technician_id) {
         const techsRes = await axios.get(`${API}/technicians/available`);
@@ -183,7 +196,7 @@ const TicketDetail = () => {
         )}
 
         {/* Quote Breakdown - Show to both owner and technician when quote items exist */}
-        {ticket.quote_items && ticket.quote_items.length > 0 && (
+        {ticket.quote_items && ticket.quote_items.length > 0 ? (
           <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6">
             <h3 className="text-lg font-semibold text-[#0A2342] mb-4">Dettaglio preventivo</h3>
             <div className="overflow-x-auto">
@@ -208,6 +221,13 @@ const TicketDetail = () => {
                 </tbody>
               </table>
             </div>
+          </div>
+        ) : (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg shadow-sm p-6 mb-6">
+            <h3 className="text-lg font-semibold text-[#0A2342] mb-2">Dettaglio preventivo</h3>
+            <p className="text-amber-700 text-sm" data-testid="quote-pending-message">
+              In attesa del preventivo del tecnico
+            </p>
           </div>
         )}
 

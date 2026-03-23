@@ -4,6 +4,8 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import asyncio
+import resend
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional, Literal
@@ -18,8 +20,33 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
+# Initialize Resend
+resend.api_key = os.environ.get('RESEND_API_KEY')
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
+
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
+
+# Email helper function
+async def send_email_notification(to_email: str, subject: str, html_content: str):
+    """Send email notification via Resend - non-blocking"""
+    if not resend.api_key:
+        logging.warning("RESEND_API_KEY not configured, skipping email")
+        return None
+    
+    try:
+        params = {
+            "from": SENDER_EMAIL,
+            "to": [to_email],
+            "subject": subject,
+            "html": html_content
+        }
+        result = await asyncio.to_thread(resend.Emails.send, params)
+        logging.info(f"Email sent to {to_email}: {result.get('id')}")
+        return result
+    except Exception as e:
+        logging.error(f"Failed to send email to {to_email}: {str(e)}")
+        return None
 
 # Models
 class User(BaseModel):
@@ -353,6 +380,37 @@ async def register(request: RegisterRequest):
     # Create JWT token
     token = create_access_token({"user_id": user_id, "email": request.email, "role": request.role})
     
+    # Send welcome email (non-blocking)
+    welcome_html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #0A2342, #1D9E75); padding: 30px; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">Benvenuto su YachtAssist!</h1>
+        </div>
+        <div style="background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-radius: 0 0 10px 10px;">
+            <p style="color: #0A2342; font-size: 16px; line-height: 1.6;">
+                Ciao <strong>{request.nome}</strong>,
+            </p>
+            <p style="color: #64748b; font-size: 14px; line-height: 1.6;">
+                Il tuo account YachtAssist è stato creato con successo! 
+                {"Ora puoi gestire la tua imbarcazione e richiedere interventi tecnici." if request.role == "owner" else "Ora puoi visualizzare e gestire i ticket assegnati."}
+            </p>
+            <div style="margin-top: 20px; padding: 15px; background: white; border-radius: 8px; border-left: 4px solid #1D9E75;">
+                <p style="color: #0A2342; margin: 0; font-size: 14px;">
+                    <strong>Il tuo ruolo:</strong> {"Armatore" if request.role == "owner" else "Tecnico"}
+                </p>
+            </div>
+            <p style="color: #64748b; font-size: 12px; margin-top: 20px;">
+                Hai domande? Contattaci su support@yachtassist.it
+            </p>
+        </div>
+    </div>
+    """
+    asyncio.create_task(send_email_notification(
+        request.email,
+        "Benvenuto su YachtAssist!",
+        welcome_html
+    ))
+    
     # Return user without password
     user_doc.pop("password", None)
     user_doc.pop("_id", None)
@@ -449,6 +507,14 @@ async def get_checklist(yacht_id: str):
     items = await db.checklist_items.find({"yacht_id": yacht_id}, {"_id": 0}).to_list(100)
     return [ChecklistItem(**item) for item in items]
 
+@api_router.get("/yachts/{yacht_id}", response_model=Yacht)
+async def get_yacht(yacht_id: str):
+    """Get yacht by ID"""
+    yacht = await db.yachts.find_one({"id": yacht_id}, {"_id": 0})
+    if not yacht:
+        raise HTTPException(status_code=404, detail="Yacht not found")
+    return Yacht(**yacht)
+
 @api_router.get("/technicians/available", response_model=List[TechnicianProfile])
 async def get_available_technicians():
     profiles = await db.technician_profiles.find({}, {"_id": 0}).to_list(100)
@@ -505,6 +571,104 @@ async def assign_technician(ticket_id: str, request: AssignTechnicianRequest):
         {"id": ticket_id},
         {"$set": update_data}
     )
+    
+    # Send email notifications for technician assignment (non-blocking)
+    # Get technician details
+    technician = await db.technician_profiles.find_one({"id": request.technician_id}, {"_id": 0})
+    tech_user = await db.users.find_one({"id": request.technician_id}, {"_id": 0})
+    
+    # Get owner details
+    owner = await db.users.find_one({"id": ticket["owner_id"]}, {"_id": 0})
+    
+    # Email to owner about technician assignment
+    if owner and owner.get("email"):
+        owner_html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #0A2342, #1D9E75); padding: 30px; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">Tecnico Assegnato!</h1>
+            </div>
+            <div style="background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-radius: 0 0 10px 10px;">
+                <p style="color: #0A2342; font-size: 16px; line-height: 1.6;">
+                    Ciao <strong>{owner.get("name", "").split()[0]}</strong>,
+                </p>
+                <p style="color: #64748b; font-size: 14px; line-height: 1.6;">
+                    Un tecnico è stato assegnato al tuo ticket!
+                </p>
+                <div style="margin-top: 20px; padding: 20px; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <p style="color: #0A2342; margin: 0 0 15px 0; font-size: 16px;">
+                        <strong>Ticket #{ticket_id}</strong>
+                    </p>
+                    <div style="border-left: 4px solid #1D9E75; padding-left: 15px;">
+                        <p style="color: #0A2342; margin: 0 0 5px 0; font-size: 14px;">
+                            <strong>Tecnico:</strong> {technician.get("name") if technician else "N/A"}
+                        </p>
+                        <p style="color: #64748b; margin: 0 0 5px 0; font-size: 14px;">
+                            <strong>Specializzazione:</strong> {technician.get("specialization") if technician else "N/A"}
+                        </p>
+                        <p style="color: #64748b; margin: 0; font-size: 14px;">
+                            <strong>Valutazione:</strong> {"⭐" * int(technician.get("rating", 0))} ({technician.get("rating", "N/A")})
+                        </p>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; padding: 15px; background: #f0fdf4; border-radius: 8px; border: 1px solid #bbf7d0;">
+                    <p style="color: #166534; margin: 0; font-size: 14px;">
+                        📅 <strong>Appuntamento:</strong> Sab 5 apr · 09:30 · Marina di Pisa pontile B
+                    </p>
+                </div>
+            </div>
+        </div>
+        """
+        asyncio.create_task(send_email_notification(
+            owner["email"],
+            f"Tecnico assegnato - Ticket #{ticket_id}",
+            owner_html
+        ))
+    
+    # Email to technician about new assignment
+    if tech_user and tech_user.get("email"):
+        tech_html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #0A2342, #1D9E75); padding: 30px; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">Nuovo Lavoro Assegnato!</h1>
+            </div>
+            <div style="background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-radius: 0 0 10px 10px;">
+                <p style="color: #0A2342; font-size: 16px; line-height: 1.6;">
+                    Ciao <strong>{tech_user.get("name", "").split()[0]}</strong>,
+                </p>
+                <p style="color: #64748b; font-size: 14px; line-height: 1.6;">
+                    Ti è stato assegnato un nuovo intervento!
+                </p>
+                <div style="margin-top: 20px; padding: 20px; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <p style="color: #0A2342; margin: 0 0 15px 0; font-size: 16px;">
+                        <strong>Ticket #{ticket_id}</strong>
+                    </p>
+                    <p style="color: #64748b; margin: 0 0 5px 0; font-size: 14px;">
+                        <strong>Marina:</strong> {ticket.get("marina", "N/A")}
+                    </p>
+                    <p style="color: #64748b; margin: 0 0 5px 0; font-size: 14px;">
+                        <strong>Urgenza:</strong> {ticket.get("urgency", "N/A").capitalize()}
+                    </p>
+                    <p style="color: #64748b; margin: 0; font-size: 14px;">
+                        <strong>Lavori:</strong>
+                    </p>
+                    <ul style="color: #64748b; font-size: 14px; margin: 5px 0 0 0; padding-left: 20px;">
+                        {"".join([f"<li>{item}</li>" for item in ticket.get("work_items", [])])}
+                    </ul>
+                </div>
+                <div style="margin-top: 15px; padding: 15px; background: #fef3c7; border-radius: 8px; border: 1px solid #fde68a;">
+                    <p style="color: #92400e; margin: 0; font-size: 14px;">
+                        📅 <strong>Appuntamento:</strong> Sab 5 apr · 09:30 · Marina di Pisa pontile B
+                    </p>
+                </div>
+            </div>
+        </div>
+        """
+        asyncio.create_task(send_email_notification(
+            tech_user["email"],
+            f"Nuovo intervento assegnato - Ticket #{ticket_id}",
+            tech_html
+        ))
+    
     return {"success": True}
 
 @api_router.post("/tickets/create")
@@ -555,6 +719,47 @@ async def create_generic_ticket(request: CreateTicketRequest, user_id: str):
     
     await db.tickets.insert_one(ticket_doc)
     ticket_doc.pop("_id", None)
+    
+    # Send ticket creation email to owner (non-blocking)
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if user and user.get("email"):
+        ticket_html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #0A2342, #1D9E75); padding: 30px; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">Nuovo Ticket Creato</h1>
+            </div>
+            <div style="background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-radius: 0 0 10px 10px;">
+                <p style="color: #0A2342; font-size: 16px; line-height: 1.6;">
+                    Ciao <strong>{user.get("name", "").split()[0]}</strong>,
+                </p>
+                <p style="color: #64748b; font-size: 14px; line-height: 1.6;">
+                    Il tuo ticket è stato creato con successo!
+                </p>
+                <div style="margin-top: 20px; padding: 20px; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <p style="color: #0A2342; margin: 0 0 10px 0; font-size: 16px;">
+                        <strong>Ticket #{ticket_id}</strong>
+                    </p>
+                    <p style="color: #64748b; margin: 0 0 5px 0; font-size: 14px;">
+                        <strong>Categoria:</strong> {request.category}
+                    </p>
+                    <p style="color: #64748b; margin: 0 0 5px 0; font-size: 14px;">
+                        <strong>Marina:</strong> {request.marina}
+                    </p>
+                    <p style="color: #64748b; margin: 0; font-size: 14px;">
+                        <strong>Urgenza:</strong> {request.urgency.capitalize()}
+                    </p>
+                </div>
+                <p style="color: #64748b; font-size: 14px; margin-top: 20px; line-height: 1.6;">
+                    Ti notificheremo quando un tecnico verrà assegnato al tuo ticket.
+                </p>
+            </div>
+        </div>
+        """
+        asyncio.create_task(send_email_notification(
+            user["email"],
+            f"Ticket #{ticket_id} creato - YachtAssist",
+            ticket_html
+        ))
     
     return {"ticket": Ticket(**ticket_doc), "success": True}
 

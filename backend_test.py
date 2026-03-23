@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 
 class YachtAssistAPITester:
-    def __init__(self, base_url="https://yacht-assist-demo.preview.emergentagent.com"):
+    def __init__(self, base_url="https://assist-email-notify.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.tests_run = 0
@@ -54,11 +54,11 @@ class YachtAssistAPITester:
             return False, {}
 
     def test_owner_login(self):
-        """Test owner login"""
+        """Test owner demo login"""
         success, response = self.run_test(
-            "Owner Login",
+            "Owner Demo Login",
             "POST", 
-            "auth/login",
+            "auth/demo-login",
             200,
             data={"role": "owner"}
         )
@@ -70,11 +70,11 @@ class YachtAssistAPITester:
         return False
 
     def test_technician_login(self):
-        """Test technician login"""
+        """Test technician demo login"""
         success, response = self.run_test(
-            "Technician Login",
+            "Technician Demo Login",
             "POST",
-            "auth/login", 
+            "auth/demo-login", 
             200,
             data={"role": "technician"}
         )
@@ -145,10 +145,30 @@ class YachtAssistAPITester:
                 print(f"   - {tech.get('name')} ({tech.get('specialization')}) ⭐{tech.get('rating')} {eco_cert}")
         return success
 
-    def test_get_ticket(self):
-        """Test get ticket details"""
+    def test_get_yacht_by_id(self):
+        """Test new yacht endpoint - Bug Fix 1"""
         success, response = self.run_test(
-            "Get Ticket Details",
+            "Get Yacht by ID (Bug Fix 1)",
+            "GET",
+            "yachts/yacht-1",
+            200
+        )
+        if success:
+            print(f"   Yacht: {response.get('name')} - {response.get('model')}")
+            print(f"   Owner: {response.get('owner_id')}")
+            print(f"   Marina: {response.get('marina')}")
+            # Verify this is the correct yacht for demo user
+            if response.get('name') == 'Suerte' and response.get('model') == 'Sanlorenzo 50':
+                print("   ✅ Bug Fix 1: Correct yacht data returned")
+                return True
+            else:
+                print("   ❌ Bug Fix 1: Wrong yacht data")
+        return success
+
+    def test_get_ticket(self):
+        """Test get ticket details - Bug Fix 2"""
+        success, response = self.run_test(
+            "Get Ticket Details (Bug Fix 2)",
             "GET", 
             "tickets/YA-2025-0847",
             200
@@ -158,6 +178,14 @@ class YachtAssistAPITester:
             print(f"   Status: {response.get('status')}")
             print(f"   Urgency: {response.get('urgency')}")
             print(f"   Work items: {len(response.get('work_items', []))}")
+            print(f"   Yacht ID: {response.get('yacht_id')}")
+            
+            # Check Bug Fix 2: quote_items should be None for generic tickets initially
+            quote_items = response.get('quote_items')
+            if quote_items is None:
+                print("   ✅ Bug Fix 2: quote_items is None (will show placeholder)")
+            else:
+                print(f"   Quote items: {len(quote_items) if quote_items else 0}")
         return success
 
     def test_assign_technician(self):
@@ -225,6 +253,7 @@ def main():
     print("\n📝 DATA ENDPOINTS")
     tester.test_checklist()
     tester.test_available_technicians()
+    tester.test_get_yacht_by_id()  # New yacht endpoint test
     
     # Test ticket workflow
     print("\n🎫 TICKET WORKFLOW TESTS")
