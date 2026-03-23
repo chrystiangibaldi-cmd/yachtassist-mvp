@@ -5,9 +5,11 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional, Literal
 from datetime import datetime, timezone
+import uuid
+from auth import hash_password, verify_password, create_access_token
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -85,6 +87,21 @@ class Ticket(BaseModel):
 
 class LoginRequest(BaseModel):
     role: Literal["owner", "technician"]
+
+class RealLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class RegisterRequest(BaseModel):
+    nome: str
+    cognome: str
+    email: EmailStr
+    password: str
+    role: Literal["owner", "technician"]
+    # Technician-specific fields
+    specializzazione: Optional[str] = None
+    porto_base: Optional[str] = None
+    telefono: Optional[str] = None
 
 class LoginResponse(BaseModel):
     user: User
@@ -269,8 +286,10 @@ async def startup_event():
     logger.info("Demo data seeded successfully")
 
 # Routes
-@api_router.post("/auth/login", response_model=LoginResponse)
-async def login(request: LoginRequest):
+# DEMO LOGIN - Keep existing functionality
+@api_router.post("/auth/demo-login", response_model=LoginResponse)
+async def demo_login(request: LoginRequest):
+    """Demo login for investor presentations - no password required"""
     if request.role == "owner":
         user = await db.users.find_one({"id": "owner-1"}, {"_id": 0})
     else:
@@ -280,6 +299,79 @@ async def login(request: LoginRequest):
         raise HTTPException(status_code=404, detail="User not found")
     
     return LoginResponse(user=User(**user), token=f"demo-token-{user['id']}")
+
+# REAL REGISTRATION
+@api_router.post("/auth/register", response_model=LoginResponse)
+async def register(request: RegisterRequest):
+    """Register a new user with real authentication"""
+    # Check if email already exists
+    existing_user = await db.users.find_one({"email": request.email})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email già registrata")
+    
+    # Generate unique user ID
+    user_id = f"user-{uuid.uuid4().hex[:8]}"
+    
+    # Hash password
+    hashed_password = hash_password(request.password)
+    
+    # Create user document
+    user_doc = {
+        "id": user_id,
+        "name": f"{request.nome} {request.cognome}",
+        "nome": request.nome,
+        "cognome": request.cognome,
+        "email": request.email,
+        "password": hashed_password,
+        "role": request.role,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Add technician-specific fields
+    if request.role == "technician":
+        user_doc.update({
+            "specializzazione": request.specializzazione,
+            "porto_base": request.porto_base,
+            "telefono": request.telefono
+        })
+    
+    # Insert user
+    await db.users.insert_one(user_doc)
+    
+    # Create JWT token
+    token = create_access_token({"user_id": user_id, "email": request.email, "role": request.role})
+    
+    # Return user without password
+    user_doc.pop("password", None)
+    user_doc.pop("_id", None)
+    
+    return LoginResponse(user=User(**user_doc), token=token)
+
+# REAL LOGIN
+@api_router.post("/auth/login", response_model=LoginResponse)
+async def login(request: RealLoginRequest):
+    """Real login with email and password"""
+    # Find user by email
+    user = await db.users.find_one({"email": request.email}, {"_id": 0})
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="Email o password non validi")
+    
+    # Check if user has a password (real user vs demo user)
+    if "password" not in user:
+        raise HTTPException(status_code=401, detail="Utilizza il login demo per questo account")
+    
+    # Verify password
+    if not verify_password(request.password, user["password"]):
+        raise HTTPException(status_code=401, detail="Email o password non validi")
+    
+    # Create JWT token
+    token = create_access_token({"user_id": user["id"], "email": user["email"], "role": user["role"]})
+    
+    # Return user without password
+    user.pop("password", None)
+    
+    return LoginResponse(user=User(**user), token=token)
 
 @api_router.get("/dashboard/owner", response_model=OwnerDashboard)
 async def get_owner_dashboard(user_id: str = "owner-1"):

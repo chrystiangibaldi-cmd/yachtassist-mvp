@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import axios from 'axios';
 import '@/App.css';
 import Login from '@/pages/Login';
+import RealLogin from '@/pages/RealLogin';
+import Register from '@/pages/Register';
 import OwnerDashboard from '@/pages/OwnerDashboard';
 import TechnicianDashboard from '@/pages/TechnicianDashboard';
 import Checklist from '@/pages/Checklist';
@@ -24,11 +26,11 @@ const ResetDemo = () => {
         localStorage.removeItem('yacht_user');
         localStorage.removeItem('yacht_token');
         setTimeout(() => {
-          navigate('/');
+          navigate('/login');
         }, 500);
       } catch (error) {
         console.error('Reset error:', error);
-        navigate('/');
+        navigate('/login');
       }
     };
     resetData();
@@ -75,14 +77,24 @@ function App() {
     <UserContext.Provider value={{ user, token, login, logout }}>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Login />} />
+          {/* Redirect root to login */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          
+          {/* Auth routes */}
+          <Route path="/login" element={<RealLogin />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/demo" element={<Login />} />
           <Route path="/reset-demo" element={<ResetDemo />} />
-          <Route path="/owner/dashboard" element={user?.role === 'owner' ? <OwnerDashboard /> : <Navigate to="/" />} />
-          <Route path="/owner/checklist" element={user?.role === 'owner' ? <Checklist /> : <Navigate to="/" />} />
-          <Route path="/owner/ticket/create" element={user?.role === 'owner' ? <CreateTicket /> : <Navigate to="/" />} />
-          <Route path="/owner/ticket/:id" element={user?.role === 'owner' ? <TicketDetail /> : <Navigate to="/" />} />
-          <Route path="/technician/dashboard" element={user?.role === 'technician' ? <TechnicianDashboard /> : <Navigate to="/" />} />
-          <Route path="/technician/ticket/:id" element={user?.role === 'technician' ? <TicketDetail /> : <Navigate to="/" />} />
+          
+          {/* Protected Owner routes */}
+          <Route path="/owner/dashboard" element={user?.role === 'owner' ? <OwnerDashboard /> : <Navigate to="/login" />} />
+          <Route path="/owner/checklist" element={user?.role === 'owner' ? <Checklist /> : <Navigate to="/login" />} />
+          <Route path="/owner/ticket/create" element={user?.role === 'owner' ? <CreateTicket /> : <Navigate to="/login" />} />
+          <Route path="/owner/ticket/:id" element={user?.role === 'owner' ? <TicketDetail /> : <Navigate to="/login" />} />
+          
+          {/* Protected Technician routes */}
+          <Route path="/technician/dashboard" element={user?.role === 'technician' ? <TechnicianDashboard /> : <Navigate to="/login" />} />
+          <Route path="/technician/ticket/:id" element={user?.role === 'technician' ? <TicketDetail /> : <Navigate to="/login" />} />
         </Routes>
       </BrowserRouter>
     </UserContext.Provider>
