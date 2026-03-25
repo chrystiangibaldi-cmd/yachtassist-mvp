@@ -12,6 +12,7 @@ from typing import List, Optional, Literal
 from datetime import datetime, timezone
 import uuid
 from .auth import hash_password, verify_password, create_access_token
+from .payments import payments_router, set_db
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -330,6 +331,7 @@ async def seed_data(force_reset=False):
 
 @app.on_event("startup")
 async def startup_event():
+    set_db(db)
     await seed_data()
     logger.info("Demo data seeded successfully")
 
@@ -799,6 +801,7 @@ async def reset_demo():
     return {"success": True, "message": "Demo data reset successfully"}
 
 app.include_router(api_router)
+app.include_router(payments_router)
 
 app.add_middleware(
     CORSMiddleware,
