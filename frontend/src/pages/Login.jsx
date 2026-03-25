@@ -11,7 +11,7 @@ const Login = () => {
 
   const handleLogin = async (role) => {
     try {
-      const response = await axios.post(`${API}/auth/login`, { role });
+      const response = await axios.post(`${API}/auth/demo-login`, { role });
       const { user, token } = response.data;
       login(user, token);
       
