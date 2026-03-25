@@ -7,7 +7,7 @@ import { Anchor, ArrowLeft, CheckCircle, FileText, Calendar, Star, Award, Credit
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
-const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
+const stripePromise = loadStripe('pk_test_51RtUo8Cq3C8e7g9xhNW8lANL74jpfwhANr6YDUwGfv96NzCoJwFYhwAXBOtot4rESSM4Mmhq4qlELP72FocRjs5K00tNGeqaBI');
 
 const PaymentForm = ({ ticket, onSuccess, onCancel }) => {
   const stripe = useStripe();
