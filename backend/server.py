@@ -16,9 +16,9 @@ from auth import hash_password, verify_password, create_access_token
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-mongo_url = os.environ['MONGO_URL']
+mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+db = client[os.environ.get('DB_NAME', 'yachtassist')]
 
 # Initialize Resend
 resend.api_key = os.environ.get('RESEND_API_KEY')
@@ -26,6 +26,15 @@ SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
+
+# Health check endpoint (root)
+@app.get("/")
+async def root():
+    return {"status": "ok", "service": "YachtAssist API"}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
 
 # Email helper function
 async def send_email_notification(to_email: str, subject: str, html_content: str):
