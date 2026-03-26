@@ -566,7 +566,9 @@ Rispondi esattamente con questo JSON:
         raise HTTPException(status_code=500, detail="Errore AI")
 
 @api_router.post("/reset-demo")
-async def reset_demo():
+async def reset_demo(secret: str = ""):
+    if secret != os.environ.get("RESET_SECRET", "yachtassist-reset-2026"):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
     await seed_data(force_reset=True)
     logger.info("Demo data reset to initial state")
     return {"success": True, "message": "Demo data reset successfully"}
