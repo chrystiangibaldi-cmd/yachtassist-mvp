@@ -590,11 +590,11 @@ async def shutdown_db_client():
 
 Ora fai anche queste due cose:
 
-**1. `backend/requirements.txt`** — aggiungi in fondo:
+**1. `backend/requirements.txt`** - aggiungi in fondo:
 ```
 anthropic==0.25.0
 ```
 
-**2. Railway → yachtassist-mvp → Variables** — aggiungi:
+**2. Railway → yachtassist-mvp → Variables** - aggiungi:
 ```
 ANTHROPIC_API_KEY = sk-ant-...
