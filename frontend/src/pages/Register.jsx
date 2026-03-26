@@ -89,7 +89,7 @@ const Register = () => {
       
       // Redirect based on role
       if (user.role === 'owner') {
-        navigate('/owner/dashboard');
+        navigate('/owner/onboarding');
       } else {
         navigate('/technician/dashboard');
       }
