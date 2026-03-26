@@ -135,7 +135,7 @@ const Checklist = () => {
         {nonConformeCount > 0 && (
           <Button
             data-testid="generate-ticket-button"
-            onClick={() => navigate('/owner/request')}
+            onClick={() => navigate('/owner/ticket/create')}
             className="w-full h-14 bg-red-600 hover:bg-red-700 text-white text-lg font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
           >
             Genera Ticket per {nonConformeCount} voci non conformi →
