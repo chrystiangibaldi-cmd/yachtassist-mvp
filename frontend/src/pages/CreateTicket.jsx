@@ -22,8 +22,16 @@ const CreateTicket = () => {
       const yachtData = dashboardRes.data.yacht;
       setYacht(yachtData);
 
-      const ticketsRes = await axios.get(`${API}/dashboard/owner?user_id=${user.id}`);
-      const openTicket = ticketsRes.data.recent_tickets.find(t => t.id === 'YA-2025-0847');
+      const openTicket = dashboardRes.data.recent_tickets.find(
+        t => t.status === 'aperto' || t.status === 'assegnato'
+      );
+      
+      if (!openTicket) {
+        // Nessun ticket aperto — vai al flusso di creazione
+        navigate('/owner/request');
+        return;
+      }
+      
       setTicket(openTicket);
 
       const techRes = await axios.get(`${API}/technicians/available`);
@@ -32,7 +40,6 @@ const CreateTicket = () => {
       console.error('Error fetching data:', error);
     }
   };
-
   const handleAssign = async (technicianId) => {
     try {
       await axios.post(`${API}/tickets/${ticket.id}/assign`, { technician_id: technicianId });
