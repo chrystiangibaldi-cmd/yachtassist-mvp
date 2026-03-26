@@ -552,7 +552,6 @@ Rispondi esattamente con questo JSON:
 {{
   "causa": "breve descrizione della possibile causa (max 15 parole)",
   "urgency": "urgente oppure normale",
-  "stima": "stima costo in formato €X-Y",
   "note": "consiglio pratico breve (max 20 parole)"
 }}"""
             }]
