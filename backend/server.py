@@ -586,15 +586,4 @@ app.add_middleware(
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
-```
 
-Ora fai anche queste due cose:
-
-**1. `backend/requirements.txt`** - aggiungi in fondo:
-```
-anthropic==0.25.0
-```
-
-**2. Railway → yachtassist-mvp → Variables** - aggiungi:
-```
-ANTHROPIC_API_KEY = sk-ant-...
