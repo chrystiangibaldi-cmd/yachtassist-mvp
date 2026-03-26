@@ -198,20 +198,11 @@ const OnboardingYacht = () => {
                 required
               />
             </div>
-
-            <div className="flex gap-3 pt-2">
-              <Button
-                type="button"
-                onClick={handleSkip}
-                variant="outline"
-                className="flex-1 border-slate-200 text-slate-500"
-              >
-                Salta per ora
-              </Button>
+            <div className="pt-2">
               <Button
                 type="submit"
                 disabled={loading}
-                className="flex-1 bg-[#1D9E75] hover:bg-[#1D9E75]/90 text-white font-medium"
+                className="w-full bg-[#1D9E75] hover:bg-[#1D9E75]/90 text-white font-medium"
               >
                 {loading ? 'Salvataggio...' : 'Salva e continua →'}
               </Button>
