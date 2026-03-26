@@ -603,6 +603,16 @@ async def create_yacht(request: CreateYachtRequest, user_id: str):
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.yachts.insert_one(yacht_doc)
+    # Genera checklist D.M. 133/2024 standard per la nuova barca
+    checklist_items = [
+        {"id": f"{yacht_id}-item-1", "yacht_id": yacht_id, "name": "Giubbotti 150N con luce automatica", "status": "mancante", "is_new_2025": True},
+        {"id": f"{yacht_id}-item-2", "yacht_id": yacht_id, "name": "Salvagente anulare con boetta", "status": "mancante", "is_new_2025": False},
+        {"id": f"{yacht_id}-item-3", "yacht_id": yacht_id, "name": "Zattera di salvataggio", "status": "mancante", "is_new_2025": True},
+        {"id": f"{yacht_id}-item-4", "yacht_id": yacht_id, "name": "Razzi a paracadute × 2", "status": "mancante", "is_new_2025": False},
+        {"id": f"{yacht_id}-item-5", "yacht_id": yacht_id, "name": "Radio VHF", "status": "mancante", "is_new_2025": False},
+        {"id": f"{yacht_id}-item-6", "yacht_id": yacht_id, "name": "Iscrizione ATCN", "status": "mancante", "is_new_2025": True}
+    ]
+    await db.checklist_items.insert_many(checklist_items)
     yacht_doc.pop("_id", None)
     return {"yacht": yacht_doc, "success": True}
 app.include_router(api_router)
