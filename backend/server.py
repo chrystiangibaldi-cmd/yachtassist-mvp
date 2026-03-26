@@ -6,6 +6,7 @@ import os
 import logging
 import asyncio
 import resend
+import json
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional, Literal
@@ -13,6 +14,7 @@ from datetime import datetime, timezone
 import uuid
 from .auth import hash_password, verify_password, create_access_token
 from .payments import payments_router, set_db
+from anthropic import Anthropic
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -25,8 +27,17 @@ db = client[os.environ.get('DB_NAME', 'yachtassist')]
 resend.api_key = os.environ.get('RESEND_API_KEY')
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
 
+# Initialize Anthropic
+anthropic_client = Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
+
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Health check endpoint (root)
 @app.get("/")
@@ -111,11 +122,9 @@ class Ticket(BaseModel):
     status: Literal["aperto", "assegnato", "accettato", "eseguito", "chiuso"]
     urgency: Literal["alta", "media", "bassa", "emergenza"]
     work_items: List[str]
-    # Generic ticket fields
     category: Optional[str] = None
     description: Optional[str] = None
     photos: Optional[List[str]] = []
-    # Pricing
     price_min: int
     price_max: int
     final_price: Optional[int] = None
@@ -147,7 +156,6 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     role: Literal["owner", "technician"]
-    # Technician-specific fields
     specializzazione: Optional[str] = None
     porto_base: Optional[str] = None
     telefono: Optional[str] = None
@@ -178,19 +186,19 @@ class AssignTechnicianRequest(BaseModel):
 class CloseTicketRequest(BaseModel):
     documents: List[str]
 
+class DiagnoseRequest(BaseModel):
+    description: str
+    category: str
+
 # Seed demo data
 async def seed_data(force_reset=False):
     if force_reset:
-        # Only when explicitly resetting via /reset-demo endpoint
         await db.users.delete_many({})
         await db.yachts.delete_many({})
         await db.checklist_items.delete_many({})
         await db.technician_profiles.delete_many({})
         await db.tickets.delete_many({})
         logger.info("Force reset: All collections cleared")
-    
-    # Use upsert logic - insert only if not exists, never create duplicates
-    # This ensures startup never modifies existing data
     
     users = [
         {
@@ -298,7 +306,6 @@ async def seed_data(force_reset=False):
             upsert=True
         )
     
-    # Critical: Check if ticket YA-2025-0847 exists before creating
     existing_ticket = await db.tickets.find_one({"id": "YA-2025-0847"})
     if not existing_ticket:
         ticket = {
@@ -336,36 +343,23 @@ async def startup_event():
     logger.info("Demo data seeded successfully")
 
 # Routes
-# DEMO LOGIN - Keep existing functionality
 @api_router.post("/auth/demo-login", response_model=LoginResponse)
 async def demo_login(request: LoginRequest):
-    """Demo login for investor presentations - no password required"""
     if request.role == "owner":
         user = await db.users.find_one({"id": "owner-1"}, {"_id": 0})
     else:
         user = await db.users.find_one({"id": "tech-1"}, {"_id": 0})
-    
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
     return LoginResponse(user=User(**user), token=f"demo-token-{user['id']}")
 
-# REAL REGISTRATION
 @api_router.post("/auth/register", response_model=LoginResponse)
 async def register(request: RegisterRequest):
-    """Register a new user with real authentication"""
-    # Check if email already exists
     existing_user = await db.users.find_one({"email": request.email})
     if existing_user:
         raise HTTPException(status_code=400, detail="Email già registrata")
-    
-    # Generate unique user ID
     user_id = f"user-{uuid.uuid4().hex[:8]}"
-    
-    # Hash password
     hashed_password = hash_password(request.password)
-    
-    # Create user document
     user_doc = {
         "id": user_id,
         "name": f"{request.nome} {request.cognome}",
@@ -376,141 +370,73 @@ async def register(request: RegisterRequest):
         "role": request.role,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
-    
-    # Add technician-specific fields
     if request.role == "technician":
         user_doc.update({
             "specializzazione": request.specializzazione,
             "porto_base": request.porto_base,
             "telefono": request.telefono
         })
-    
-    # Insert user
     await db.users.insert_one(user_doc)
-    
-    # Create JWT token
     token = create_access_token({"user_id": user_id, "email": request.email, "role": request.role})
-    
-    # Send welcome email (non-blocking)
     welcome_html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #0A2342, #1D9E75); padding: 30px; border-radius: 10px 10px 0 0;">
             <h1 style="color: white; margin: 0; font-size: 24px;">Benvenuto su YachtAssist!</h1>
         </div>
         <div style="background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-radius: 0 0 10px 10px;">
-            <p style="color: #0A2342; font-size: 16px; line-height: 1.6;">
-                Ciao <strong>{request.nome}</strong>,
-            </p>
-            <p style="color: #64748b; font-size: 14px; line-height: 1.6;">
-                Il tuo account YachtAssist è stato creato con successo! 
-                {"Ora puoi gestire la tua imbarcazione e richiedere interventi tecnici." if request.role == "owner" else "Ora puoi visualizzare e gestire i ticket assegnati."}
-            </p>
-            <div style="margin-top: 20px; padding: 15px; background: white; border-radius: 8px; border-left: 4px solid #1D9E75;">
-                <p style="color: #0A2342; margin: 0; font-size: 14px;">
-                    <strong>Il tuo ruolo:</strong> {"Armatore" if request.role == "owner" else "Tecnico"}
-                </p>
-            </div>
-            <p style="color: #64748b; font-size: 12px; margin-top: 20px;">
-                Hai domande? Contattaci su support@yachtassist.it
-            </p>
+            <p style="color: #0A2342; font-size: 16px;">Ciao <strong>{request.nome}</strong>,</p>
+            <p style="color: #64748b; font-size: 14px;">Il tuo account YachtAssist è stato creato con successo!</p>
         </div>
     </div>
     """
-    asyncio.create_task(send_email_notification(
-        request.email,
-        "Benvenuto su YachtAssist!",
-        welcome_html
-    ))
-    
-    # Return user without password
+    asyncio.create_task(send_email_notification(request.email, "Benvenuto su YachtAssist!", welcome_html))
     user_doc.pop("password", None)
     user_doc.pop("_id", None)
-    
     return LoginResponse(user=User(**user_doc), token=token)
 
-# REAL LOGIN
 @api_router.post("/auth/login", response_model=LoginResponse)
 async def login(request: RealLoginRequest):
-    """Real login with email and password"""
-    # Find user by email
     user = await db.users.find_one({"email": request.email}, {"_id": 0})
-    
     if not user:
         raise HTTPException(status_code=401, detail="Email o password non validi")
-    
-    # Check if user has a password (real user vs demo user)
     if "password" not in user:
         raise HTTPException(status_code=401, detail="Utilizza il login demo per questo account")
-    
-    # Verify password
     if not verify_password(request.password, user["password"]):
         raise HTTPException(status_code=401, detail="Email o password non validi")
-    
-    # Create JWT token
     token = create_access_token({"user_id": user["id"], "email": user["email"], "role": user["role"]})
-    
-    # Return user without password
     user.pop("password", None)
-    
     return LoginResponse(user=User(**user), token=token)
 
 @api_router.get("/dashboard/owner", response_model=OwnerDashboard)
 async def get_owner_dashboard(user_id: str = "owner-1"):
     user = await db.users.find_one({"id": user_id}, {"_id": 0})
-    
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
     yacht = await db.yachts.find_one({"owner_id": user_id}, {"_id": 0})
-    
-    # Handle case where user doesn't have a yacht yet (new registered users)
     if not yacht:
-        # Return dashboard with placeholder yacht data
         return OwnerDashboard(
             user=User(**user),
-            yacht=Yacht(
-                id="pending",
-                name="Nessuna imbarcazione",
-                model="",
-                owner_id=user_id,
-                marina="",
-                category="",
-                distance="",
-                compliance_score=0
-            ),
-            open_tickets=0,
-            active_interventions=0,
-            season="Stagione 2025",
-            recent_tickets=[]
+            yacht=Yacht(id="pending", name="Nessuna imbarcazione", model="", owner_id=user_id, marina="", category="", distance="", compliance_score=0),
+            open_tickets=0, active_interventions=0, season="Stagione 2025", recent_tickets=[]
         )
-    
     tickets = await db.tickets.find({"owner_id": user_id}, {"_id": 0}).to_list(10)
-    
     open_tickets = len([t for t in tickets if t["status"] in ["aperto", "assegnato"]])
     active_interventions = len([t for t in tickets if t["status"] == "accettato"])
-    
     return OwnerDashboard(
-        user=User(**user),
-        yacht=Yacht(**yacht),
-        open_tickets=open_tickets,
-        active_interventions=active_interventions,
-        season="Stagione 2025",
-        recent_tickets=[Ticket(**t) for t in tickets[:2]]
+        user=User(**user), yacht=Yacht(**yacht),
+        open_tickets=open_tickets, active_interventions=active_interventions,
+        season="Stagione 2025", recent_tickets=[Ticket(**t) for t in tickets[:2]]
     )
 
 @api_router.get("/dashboard/technician", response_model=TechnicianDashboard)
 async def get_technician_dashboard(user_id: str = "tech-1"):
     user = await db.users.find_one({"id": user_id}, {"_id": 0})
     tickets = await db.tickets.find({"technician_id": user_id}, {"_id": 0}).to_list(10)
-    
     total_earnings = sum([t.get("technician_payment", 0) for t in tickets if t["status"] == "chiuso"])
     pending_earnings = sum([t.get("technician_payment", 0) for t in tickets if t["status"] in ["assegnato", "accettato", "eseguito"]])
-    
     return TechnicianDashboard(
-        user=User(**user),
-        assigned_tickets=[Ticket(**t) for t in tickets],
-        total_earnings=total_earnings,
-        pending_earnings=pending_earnings
+        user=User(**user), assigned_tickets=[Ticket(**t) for t in tickets],
+        total_earnings=total_earnings, pending_earnings=pending_earnings
     )
 
 @api_router.get("/checklist/{yacht_id}", response_model=List[ChecklistItem])
@@ -520,7 +446,6 @@ async def get_checklist(yacht_id: str):
 
 @api_router.get("/yachts/{yacht_id}", response_model=Yacht)
 async def get_yacht(yacht_id: str):
-    """Get yacht by ID"""
     yacht = await db.yachts.find_one({"id": yacht_id}, {"_id": 0})
     if not yacht:
         raise HTTPException(status_code=404, detail="Yacht not found")
@@ -540,262 +465,109 @@ async def get_ticket(ticket_id: str):
 
 @api_router.post("/tickets/{ticket_id}/assign")
 async def assign_technician(ticket_id: str, request: AssignTechnicianRequest):
-    # Check if ticket exists first
     ticket = await db.tickets.find_one({"id": ticket_id}, {"_id": 0})
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
-    
-    # Only add quote items for the demo compliance ticket (YA-2025-0847)
-    # Generic tickets don't get quotes until technician provides them
     quote_items = None
     if ticket_id == "YA-2025-0847":
         quote_items = [
-            {
-                "voce": "Fornitura zattera ISO 9650-1",
-                "descrizione": "Zattera costiera omologata",
-                "importo": 180
-            },
-            {
-                "voce": "Sostituzione razzi paracadute × 2",
-                "descrizione": "Razzi Comet 60m, scad. 2028",
-                "importo": 60
-            },
-            {
-                "voce": "Manodopera",
-                "descrizione": "Installazione e verifica",
-                "importo": 40
-            }
+            {"voce": "Fornitura zattera ISO 9650-1", "descrizione": "Zattera costiera omologata", "importo": 180},
+            {"voce": "Sostituzione razzi paracadute × 2", "descrizione": "Razzi Comet 60m, scad. 2028", "importo": 60},
+            {"voce": "Manodopera", "descrizione": "Installazione e verifica", "importo": 40}
         ]
-    
-    # Update ticket - always succeeds if ticket exists
     update_data = {
         "technician_id": request.technician_id,
         "status": "assegnato",
         "appointment": "Sab 5 apr · 09:30 · Marina di Pisa pontile B"
     }
-    
-    # Only add quote_items if it's the compliance ticket
     if quote_items:
         update_data["quote_items"] = quote_items
-    
-    await db.tickets.update_one(
-        {"id": ticket_id},
-        {"$set": update_data}
-    )
-    
-    # Send email notifications for technician assignment (non-blocking)
-    # Get technician details
+    await db.tickets.update_one({"id": ticket_id}, {"$set": update_data})
     technician = await db.technician_profiles.find_one({"id": request.technician_id}, {"_id": 0})
     tech_user = await db.users.find_one({"id": request.technician_id}, {"_id": 0})
-    
-    # Get owner details
     owner = await db.users.find_one({"id": ticket["owner_id"]}, {"_id": 0})
-    
-    # Email to owner about technician assignment
     if owner and owner.get("email"):
-        owner_html = f"""
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, #0A2342, #1D9E75); padding: 30px; border-radius: 10px 10px 0 0;">
-                <h1 style="color: white; margin: 0; font-size: 24px;">Tecnico Assegnato!</h1>
-            </div>
-            <div style="background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-radius: 0 0 10px 10px;">
-                <p style="color: #0A2342; font-size: 16px; line-height: 1.6;">
-                    Ciao <strong>{owner.get("name", "").split()[0]}</strong>,
-                </p>
-                <p style="color: #64748b; font-size: 14px; line-height: 1.6;">
-                    Un tecnico è stato assegnato al tuo ticket!
-                </p>
-                <div style="margin-top: 20px; padding: 20px; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
-                    <p style="color: #0A2342; margin: 0 0 15px 0; font-size: 16px;">
-                        <strong>Ticket #{ticket_id}</strong>
-                    </p>
-                    <div style="border-left: 4px solid #1D9E75; padding-left: 15px;">
-                        <p style="color: #0A2342; margin: 0 0 5px 0; font-size: 14px;">
-                            <strong>Tecnico:</strong> {technician.get("name") if technician else "N/A"}
-                        </p>
-                        <p style="color: #64748b; margin: 0 0 5px 0; font-size: 14px;">
-                            <strong>Specializzazione:</strong> {technician.get("specialization") if technician else "N/A"}
-                        </p>
-                        <p style="color: #64748b; margin: 0; font-size: 14px;">
-                            <strong>Valutazione:</strong> {"⭐" * int(technician.get("rating", 0))} ({technician.get("rating", "N/A")})
-                        </p>
-                    </div>
-                </div>
-                <div style="margin-top: 15px; padding: 15px; background: #f0fdf4; border-radius: 8px; border: 1px solid #bbf7d0;">
-                    <p style="color: #166534; margin: 0; font-size: 14px;">
-                        📅 <strong>Appuntamento:</strong> Sab 5 apr · 09:30 · Marina di Pisa pontile B
-                    </p>
-                </div>
-            </div>
-        </div>
-        """
-        asyncio.create_task(send_email_notification(
-            owner["email"],
-            f"Tecnico assegnato - Ticket #{ticket_id}",
-            owner_html
-        ))
-    
-    # Email to technician about new assignment
+        owner_html = f"""<div style="font-family: Arial, sans-serif;"><h2>Tecnico assegnato al ticket #{ticket_id}</h2><p>Tecnico: {technician.get("name") if technician else "N/A"}</p></div>"""
+        asyncio.create_task(send_email_notification(owner["email"], f"Tecnico assegnato - Ticket #{ticket_id}", owner_html))
     if tech_user and tech_user.get("email"):
-        tech_html = f"""
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, #0A2342, #1D9E75); padding: 30px; border-radius: 10px 10px 0 0;">
-                <h1 style="color: white; margin: 0; font-size: 24px;">Nuovo Lavoro Assegnato!</h1>
-            </div>
-            <div style="background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-radius: 0 0 10px 10px;">
-                <p style="color: #0A2342; font-size: 16px; line-height: 1.6;">
-                    Ciao <strong>{tech_user.get("name", "").split()[0]}</strong>,
-                </p>
-                <p style="color: #64748b; font-size: 14px; line-height: 1.6;">
-                    Ti è stato assegnato un nuovo intervento!
-                </p>
-                <div style="margin-top: 20px; padding: 20px; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
-                    <p style="color: #0A2342; margin: 0 0 15px 0; font-size: 16px;">
-                        <strong>Ticket #{ticket_id}</strong>
-                    </p>
-                    <p style="color: #64748b; margin: 0 0 5px 0; font-size: 14px;">
-                        <strong>Marina:</strong> {ticket.get("marina", "N/A")}
-                    </p>
-                    <p style="color: #64748b; margin: 0 0 5px 0; font-size: 14px;">
-                        <strong>Urgenza:</strong> {ticket.get("urgency", "N/A").capitalize()}
-                    </p>
-                    <p style="color: #64748b; margin: 0; font-size: 14px;">
-                        <strong>Lavori:</strong>
-                    </p>
-                    <ul style="color: #64748b; font-size: 14px; margin: 5px 0 0 0; padding-left: 20px;">
-                        {"".join([f"<li>{item}</li>" for item in ticket.get("work_items", [])])}
-                    </ul>
-                </div>
-                <div style="margin-top: 15px; padding: 15px; background: #fef3c7; border-radius: 8px; border: 1px solid #fde68a;">
-                    <p style="color: #92400e; margin: 0; font-size: 14px;">
-                        📅 <strong>Appuntamento:</strong> Sab 5 apr · 09:30 · Marina di Pisa pontile B
-                    </p>
-                </div>
-            </div>
-        </div>
-        """
-        asyncio.create_task(send_email_notification(
-            tech_user["email"],
-            f"Nuovo intervento assegnato - Ticket #{ticket_id}",
-            tech_html
-        ))
-    
+        tech_html = f"""<div style="font-family: Arial, sans-serif;"><h2>Nuovo intervento assegnato - Ticket #{ticket_id}</h2></div>"""
+        asyncio.create_task(send_email_notification(tech_user["email"], f"Nuovo intervento - Ticket #{ticket_id}", tech_html))
     return {"success": True}
 
 @api_router.post("/tickets/create")
 async def create_generic_ticket(request: CreateTicketRequest, user_id: str):
-    """Create a new generic ticket from request flow"""
-    # Fetch user's yacht if they have one
     yacht = await db.yachts.find_one({"owner_id": user_id}, {"_id": 0})
     yacht_id = yacht["id"] if yacht else "pending"
-    
-    # Generate unique ticket ID
     import random
     ticket_number = random.randint(1000, 9999)
     ticket_id = f"YA-2025-{ticket_number}"
-    
-    # Map urgency to work items description
     work_item = f"{request.category}: {request.description[:50]}..."
-    
-    # Map urgency
-    urgency_map = {
-        "normale": "media",
-        "urgente": "alta",
-        "emergenza": "alta"
-    }
-    
-    # Create ticket document
+    urgency_map = {"normale": "media", "urgente": "alta", "emergenza": "alta"}
     ticket_doc = {
-        "id": ticket_id,
-        "yacht_id": yacht_id,
-        "owner_id": user_id,
-        "technician_id": None,
-        "status": "aperto",
+        "id": ticket_id, "yacht_id": yacht_id, "owner_id": user_id,
+        "technician_id": None, "status": "aperto",
         "urgency": urgency_map.get(request.urgency, "media"),
-        "work_items": [work_item],
-        "category": request.category,
-        "description": request.description,
-        "photos": request.photos or [],
-        "price_min": 100,
-        "price_max": 500,
-        "final_price": None,
-        "commission": None,
-        "technician_payment": None,
-        "marina": request.marina,
-        "appointment": None,
-        "documents": [],
-        "quote_items": None,  # No quote until technician provides one
-        "created_at": datetime.now(timezone.utc).isoformat()
+        "work_items": [work_item], "category": request.category,
+        "description": request.description, "photos": request.photos or [],
+        "price_min": 100, "price_max": 500, "final_price": None,
+        "commission": None, "technician_payment": None,
+        "marina": request.marina, "appointment": None, "documents": [],
+        "quote_items": None, "created_at": datetime.now(timezone.utc).isoformat()
     }
-    
     await db.tickets.insert_one(ticket_doc)
     ticket_doc.pop("_id", None)
-    
-    # Send ticket creation email to owner (non-blocking)
     user = await db.users.find_one({"id": user_id}, {"_id": 0})
     if user and user.get("email"):
-        ticket_html = f"""
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, #0A2342, #1D9E75); padding: 30px; border-radius: 10px 10px 0 0;">
-                <h1 style="color: white; margin: 0; font-size: 24px;">Nuovo Ticket Creato</h1>
-            </div>
-            <div style="background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-radius: 0 0 10px 10px;">
-                <p style="color: #0A2342; font-size: 16px; line-height: 1.6;">
-                    Ciao <strong>{user.get("name", "").split()[0]}</strong>,
-                </p>
-                <p style="color: #64748b; font-size: 14px; line-height: 1.6;">
-                    Il tuo ticket è stato creato con successo!
-                </p>
-                <div style="margin-top: 20px; padding: 20px; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
-                    <p style="color: #0A2342; margin: 0 0 10px 0; font-size: 16px;">
-                        <strong>Ticket #{ticket_id}</strong>
-                    </p>
-                    <p style="color: #64748b; margin: 0 0 5px 0; font-size: 14px;">
-                        <strong>Categoria:</strong> {request.category}
-                    </p>
-                    <p style="color: #64748b; margin: 0 0 5px 0; font-size: 14px;">
-                        <strong>Marina:</strong> {request.marina}
-                    </p>
-                    <p style="color: #64748b; margin: 0; font-size: 14px;">
-                        <strong>Urgenza:</strong> {request.urgency.capitalize()}
-                    </p>
-                </div>
-                <p style="color: #64748b; font-size: 14px; margin-top: 20px; line-height: 1.6;">
-                    Ti notificheremo quando un tecnico verrà assegnato al tuo ticket.
-                </p>
-            </div>
-        </div>
-        """
-        asyncio.create_task(send_email_notification(
-            user["email"],
-            f"Ticket #{ticket_id} creato - YachtAssist",
-            ticket_html
-        ))
-    
+        ticket_html = f"""<div style="font-family: Arial, sans-serif;"><h2>Ticket #{ticket_id} creato</h2><p>Categoria: {request.category}</p></div>"""
+        asyncio.create_task(send_email_notification(user["email"], f"Ticket #{ticket_id} creato - YachtAssist", ticket_html))
     return {"ticket": Ticket(**ticket_doc), "success": True}
 
 @api_router.post("/tickets/{ticket_id}/close")
 async def close_ticket(ticket_id: str, request: CloseTicketRequest):
     result = await db.tickets.update_one(
         {"id": ticket_id},
-        {"$set": {
-            "status": "chiuso",
-            "documents": request.documents
-        }}
+        {"$set": {"status": "chiuso", "documents": request.documents}}
     )
-    
     if result.modified_count > 0:
         ticket = await db.tickets.find_one({"id": ticket_id}, {"_id": 0})
-        await db.yachts.update_one(
-            {"id": ticket["yacht_id"]},
-            {"$set": {"compliance_score": 100}}
-        )
-    
+        await db.yachts.update_one({"id": ticket["yacht_id"]}, {"$set": {"compliance_score": 100}})
     return {"success": True}
+
+@api_router.post("/ai/diagnose")
+async def ai_diagnose(request: DiagnoseRequest):
+    """Analisi AI del problema nautico con Claude"""
+    try:
+        message = await asyncio.to_thread(
+            anthropic_client.messages.create,
+            model="claude-opus-4-6",
+            max_tokens=400,
+            messages=[{
+                "role": "user",
+                "content": f"""Sei un esperto tecnico nautico italiano. Analizza questo problema su un'imbarcazione e rispondi SOLO con un JSON valido, senza markdown, senza testo aggiuntivo.
+
+Categoria: {request.category}
+Problema descritto: {request.description}
+
+Rispondi esattamente con questo JSON:
+{{
+  "causa": "breve descrizione della possibile causa (max 15 parole)",
+  "urgency": "urgente oppure normale",
+  "stima": "stima costo in formato €X-Y",
+  "note": "consiglio pratico breve (max 20 parole)"
+}}"""
+            }]
+        )
+        result = json.loads(message.content[0].text)
+        return result
+    except json.JSONDecodeError:
+        logger.error("AI response non è JSON valido")
+        raise HTTPException(status_code=500, detail="Errore parsing risposta AI")
+    except Exception as e:
+        logger.error(f"AI diagnose error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Errore AI")
 
 @api_router.post("/reset-demo")
 async def reset_demo():
-    """Reset demo data to initial state - hidden endpoint for demo purposes"""
     await seed_data(force_reset=True)
     logger.info("Demo data reset to initial state")
     return {"success": True, "message": "Demo data reset successfully"}
@@ -806,24 +578,23 @@ app.include_router(payments_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://localhost:3000",
-        "https://*.vercel.app",
-        "https://yachtassist.vercel.app",
-        "https://yachtassist-mvp.vercel.app",
-        "*"  # Allow all origins for now (can restrict later)
-    ],
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+```
+
+Ora fai anche queste due cose:
+
+**1. `backend/requirements.txt`** — aggiungi in fondo:
+```
+anthropic==0.25.0
+```
+
+**2. Railway → yachtassist-mvp → Variables** — aggiungi:
+```
+ANTHROPIC_API_KEY = sk-ant-...
