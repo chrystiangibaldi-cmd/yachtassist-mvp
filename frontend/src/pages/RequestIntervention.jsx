@@ -257,12 +257,6 @@ const RequestIntervention = () => {
                         </span>
                       </div>
                     )}
-                    {aiResult.stima && (
-                      <div className="flex gap-2">
-                        <span className="text-slate-500 w-32 shrink-0">Stima costo:</span>
-                        <span className="text-[#0A2342] font-medium">{aiResult.stima}</span>
-                      </div>
-                    )}
                     {aiResult.note && (
                       <div className="pt-2 border-t border-[#0A2342]/10">
                         <p className="text-slate-600 italic">{aiResult.note}</p>
