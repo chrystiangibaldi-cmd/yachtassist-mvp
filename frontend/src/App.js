@@ -24,7 +24,7 @@ const ResetDemo = () => {
   useEffect(() => {
     const resetData = async () => {
       try {
-        await axios.post(`${API}/reset-demo`);
+        await axios.post(`${API}/reset-demo?secret=yachtassist-reset-2026`);
         localStorage.removeItem('yacht_user');
         localStorage.removeItem('yacht_token');
         setTimeout(() => {
