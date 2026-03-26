@@ -378,7 +378,15 @@ const TicketDetail = () => {
             />
           </Elements>
         )}
-
+{ticket.status === 'assegnato' && user.role === 'owner' && !showPayment && (
+  <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 mb-4 flex items-center gap-3">
+    <span className="text-2xl">🧪</span>
+    <div>
+      <p className="text-amber-800 font-semibold text-sm">Modalità test attiva</p>
+      <p className="text-amber-700 text-sm">Nessun addebito reale. Usa carta test: <span className="font-mono font-bold">4242 4242 4242 4242</span></p>
+    </div>
+  </div>
+)}
         {ticket.status === 'assegnato' && user.role === 'owner' && !showPayment && (
           <Button
             data-testid="close-ticket-button"
