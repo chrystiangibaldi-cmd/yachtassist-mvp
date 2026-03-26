@@ -571,6 +571,38 @@ async def reset_demo():
     logger.info("Demo data reset to initial state")
     return {"success": True, "message": "Demo data reset successfully"}
 
+class CreateYachtRequest(BaseModel):
+    nome: str
+    modello: str
+    tipo: str = "motore"
+    anno: Optional[str] = None
+    lunghezza: Optional[str] = None
+    marina: str
+
+@api_router.post("/yachts/create")
+async def create_yacht(request: CreateYachtRequest, user_id: str):
+    """Crea una nuova imbarcazione per l'owner"""
+    existing = await db.yachts.find_one({"owner_id": user_id})
+    if existing:
+        raise HTTPException(status_code=400, detail="Hai già un'imbarcazione registrata")
+    
+    yacht_id = f"yacht-{uuid.uuid4().hex[:8]}"
+    yacht_doc = {
+        "id": yacht_id,
+        "name": request.nome,
+        "model": request.modello,
+        "owner_id": user_id,
+        "marina": request.marina,
+        "category": request.tipo.capitalize(),
+        "distance": "",
+        "compliance_score": 0,
+        "anno": request.anno,
+        "lunghezza": request.lunghezza,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.yachts.insert_one(yacht_doc)
+    yacht_doc.pop("_id", None)
+    return {"yacht": yacht_doc, "success": True}
 app.include_router(api_router)
 app.include_router(payments_router)
 
