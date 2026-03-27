@@ -119,7 +119,13 @@ const CreateTicket = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <img
-                      src={tech.avatar_url || 'https://via.placeholder.com/60'}
+                      {tech.avatar_url ? (
+  <img src={tech.avatar_url} alt={tech.name} className="w-16 h-16 rounded-full object-cover border-2 border-slate-200" />
+) : (
+  <div className="w-16 h-16 rounded-full bg-[#0A2342] flex items-center justify-center border-2 border-slate-200">
+    <span className="text-white text-xl font-bold">{tech.name.charAt(0)}</span>
+  </div>
+)}
                       alt={tech.name}
                       className="w-16 h-16 rounded-full object-cover border-2 border-slate-200"
                     />
