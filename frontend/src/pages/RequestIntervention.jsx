@@ -405,8 +405,7 @@ const RequestIntervention = () => {
     {tech.rating}
   </span>
 )}
-                          )}
-                        </div>
+                                                 </div>
                       </div>
                     </div>
                     {isEmergency ? (
