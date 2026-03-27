@@ -396,16 +396,11 @@ const RequestIntervention = () => {
 )}
                       <div>
                         <h3 className="text-xl font-semibold text-[#0A2342]">{tech.name}</h3>
-                        <div className="flex items-center gap-3 text-sm text-slate-600 mt-1">
+                      <div className="flex items-center gap-3 text-sm text-slate-600 mt-1">
                           <span className="font-medium">{tech.specialization}</span>
                           <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{tech.location}{tech.distance ? ` ${tech.distance}` : ''}</span>
-                          {tech.rating > 0 && (
-  <span className="flex items-center gap-1 font-medium text-amber-600">
-    <Star className="w-4 h-4 fill-amber-400" />
-    {tech.rating}
-  </span>
-)}
-                                                 </div>
+                          {tech.rating > 0 && <span className="flex items-center gap-1 font-medium text-amber-600"><Star className="w-4 h-4 fill-amber-400" />{tech.rating}</span>}
+                        </div>
                       </div>
                     </div>
                     {isEmergency ? (
