@@ -131,10 +131,12 @@ const CreateTicket = () => {
                           <MapPin className="w-4 h-4" />
                           {tech.location} {tech.distance}
                         </span>
-                        <span className="flex items-center gap-1 font-medium text-amber-600">
-                          <Star className="w-4 h-4 fill-amber-400" />
-                          {tech.rating}
-                        </span>
+                        {tech.rating > 0 && (
+  <span className="flex items-center gap-1 font-medium text-amber-600">
+    <Star className="w-4 h-4 fill-amber-400" />
+    {tech.rating}
+  </span>
+)}
                         {tech.eco_certified && (
                           <span className="flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-md font-medium">
                             <Award className="w-3 h-3" />
