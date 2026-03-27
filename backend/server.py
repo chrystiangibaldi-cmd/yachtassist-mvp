@@ -377,6 +377,20 @@ async def register(request: RegisterRequest):
             "telefono": request.telefono
         })
     await db.users.insert_one(user_doc)
+    # Se tecnico, crea profilo per il matching
+    if request.role == "technician":
+        tech_profile = {
+            "id": user_id,
+            "name": f"{request.nome} {request.cognome}",
+            "specialization": request.specializzazione or "Multidisciplinare",
+            "location": request.porto_base or "",
+            "distance": "",
+            "rating": 0.0,
+            "eco_certified": False,
+            "avatar_url": None,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.technician_profiles.insert_one(tech_profile)
     token = create_access_token({"user_id": user_id, "email": request.email, "role": request.role})
     welcome_html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
