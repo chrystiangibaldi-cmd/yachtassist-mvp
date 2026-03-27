@@ -393,7 +393,6 @@ const RequestIntervention = () => {
   <div className="w-16 h-16 rounded-full bg-[#0A2342] flex items-center justify-center border-2 border-slate-200">
     <span className="text-white text-xl font-bold">{tech.name.charAt(0)}</span>
   </div>
-)}
                       <div>
                         <h3 className="text-xl font-semibold text-[#0A2342]">{tech.name}</h3>
                       <div className="flex items-center gap-3 text-sm text-slate-600 mt-1">
