@@ -387,12 +387,13 @@ const RequestIntervention = () => {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      {tech.avatar_url ? (
+                     {tech.avatar_url ? (
   <img src={tech.avatar_url} alt={tech.name} className="w-16 h-16 rounded-full object-cover border-2 border-slate-200" />
 ) : (
   <div className="w-16 h-16 rounded-full bg-[#0A2342] flex items-center justify-center border-2 border-slate-200">
     <span className="text-white text-xl font-bold">{tech.name.charAt(0)}</span>
   </div>
+)}
                       <div>
                         <h3 className="text-xl font-semibold text-[#0A2342]">{tech.name}</h3>
                       <div className="flex items-center gap-3 text-sm text-slate-600 mt-1">
