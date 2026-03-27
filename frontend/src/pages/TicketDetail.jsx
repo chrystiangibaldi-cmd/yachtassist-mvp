@@ -340,7 +340,7 @@ const TicketDetail = () => {
               {user.role === 'technician' && (
                 <>
                   <div className="flex items-center justify-between text-slate-600 text-sm">
-                    <span>Commissione YachtAssist:</span>
+                    <span>Commissione YachtAssist ({ticket.final_price ? Math.round((ticket.commission / ticket.final_price) * 100) : 0}%):</span>
                     <span>€{ticket.commission}</span>
                   </div>
                   <div className="border-t border-slate-300 pt-2 mt-2">
