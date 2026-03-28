@@ -157,7 +157,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     role: Literal["owner", "technician"]
-    specializzazione: Optional[str] = None
+    specializzazioni: Optional[List[str]] = None  # array categorie selezionate
     porto_base: Optional[str] = None
     telefono: Optional[str] = None
 
@@ -272,7 +272,8 @@ async def seed_data(force_reset=False):
         {
             "id": "tech-1",
             "name": "Enrico Gibaldi",
-            "specialization": "Dotazioni sicurezza",
+            "specialization": "Motore & Propulsione",
+            "specializations": ["motore", "elettrico", "impianti"],
             "location": "Livorno",
             "distance": "8km",
             "rating": 4.9,
@@ -282,7 +283,8 @@ async def seed_data(force_reset=False):
         {
             "id": "tech-2",
             "name": "Gianni Ferretti",
-            "specialization": "Multidisciplinare",
+            "specialization": "Scafo & Struttura",
+            "specializations": ["scafo", "verniciatore", "falegname", "idraulico"],
             "location": "Pisa",
             "distance": "12km",
             "rating": 4.7,
@@ -292,7 +294,8 @@ async def seed_data(force_reset=False):
         {
             "id": "tech-3",
             "name": "Simone Russo",
-            "specialization": "Dotazioni sicurezza",
+            "specialization": "Lavaggi & Pulizia",
+            "specializations": ["lavaggi", "tappezzeria", "vetri"],
             "location": "Marina di Pisa",
             "distance": "2km",
             "rating": 4.6,
@@ -380,10 +383,12 @@ async def register(request: RegisterRequest):
     await db.users.insert_one(user_doc)
     # Se tecnico, crea profilo per il matching
     if request.role == "technician":
+        specializzazioni = request.specializzazioni or []
         tech_profile = {
             "id": user_id,
             "name": f"{request.nome} {request.cognome}",
-            "specialization": request.specializzazione or "Multidisciplinare",
+            "specialization": specializzazioni[0] if specializzazioni else "Multidisciplinare",
+            "specializations": specializzazioni,
             "location": request.porto_base or "",
             "distance": "",
             "rating": 0.0,
@@ -467,8 +472,13 @@ async def get_yacht(yacht_id: str):
     return Yacht(**yacht)
 
 @api_router.get("/technicians/available", response_model=List[TechnicianProfile])
-async def get_available_technicians():
+async def get_available_technicians(category: Optional[str] = None):
     profiles = await db.technician_profiles.find({}, {"_id": 0}).to_list(100)
+    if category:
+        # Specializzati prima, generici in fondo
+        specialized = [p for p in profiles if category in p.get("specializations", [])]
+        others = [p for p in profiles if category not in p.get("specializations", [])]
+        profiles = specialized + others
     return [TechnicianProfile(**p) for p in profiles]
 
 @api_router.get("/tickets/{ticket_id}", response_model=Ticket)
