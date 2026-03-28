@@ -387,19 +387,26 @@ const RequestIntervention = () => {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                     {tech.avatar_url ? (
-  <img src={tech.avatar_url} alt={tech.name} className="w-16 h-16 rounded-full object-cover border-2 border-slate-200" />
-) : (
-  <div className="w-16 h-16 rounded-full bg-[#0A2342] flex items-center justify-center border-2 border-slate-200">
-    <span className="text-white text-xl font-bold">{tech.name.charAt(0)}</span>
-  </div>
-)}
+                      <div className="w-16 h-16 rounded-full flex items-center justify-center border-2 border-slate-200 overflow-hidden bg-[#0A2342]">
+                        {tech.avatar_url
+                          ? <img src={tech.avatar_url} alt={tech.name} className="w-full h-full object-cover" />
+                          : <span className="text-white text-xl font-bold">{tech.name.charAt(0)}</span>
+                        }
+                      </div>
                       <div>
                         <h3 className="text-xl font-semibold text-[#0A2342]">{tech.name}</h3>
-                      <div className="flex items-center gap-3 text-sm text-slate-600 mt-1">
+                        <div className="flex items-center gap-3 text-sm text-slate-600 mt-1">
                           <span className="font-medium">{tech.specialization}</span>
-                          <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{tech.location}{tech.distance ? ` ${tech.distance}` : ''}</span>
-                          {tech.rating > 0 && <span className="flex items-center gap-1 font-medium text-amber-600"><Star className="w-4 h-4 fill-amber-400" />{tech.rating}</span>}
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-4 h-4" />
+                            {tech.location}
+                          </span>
+                          {tech.rating > 0 &&
+                            <span className="flex items-center gap-1 font-medium text-amber-600">
+                              <Star className="w-4 h-4 fill-amber-400" />
+                              {tech.rating}
+                            </span>
+                          }
                         </div>
                       </div>
                     </div>
@@ -433,7 +440,6 @@ const RequestIntervention = () => {
             </div>
           </div>
         )}
-
         {/* Step 5 */}
         {step === 5 && (
           <div className="text-center">
