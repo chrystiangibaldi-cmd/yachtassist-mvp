@@ -24,16 +24,6 @@ const Register = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const specializations = [
-    'Dotazioni sicurezza',
-    'Motore & Propulsione',
-    'Impianto Elettrico',
-    'Carena & Antifouling',
-    'Navigazione & Elettronica',
-    'Rigging & Vele',
-    'Idraulica & Impianti',
-    'Multidisciplinare'
-  ];
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -60,8 +50,8 @@ const Register = () => {
       return;
     }
     
-    if (formData.role === 'technician' && (!formData.specializzazione || !formData.porto_base || !formData.telefono)) {
-      setError('Compila tutti i campi per il tecnico');
+    if (formData.role === 'technician' && (!formData.specializzazioni?.length || !formData.porto_base || !formData.telefono)) {
+      setError('Seleziona almeno una specializzazione e compila tutti i campi');
       return;
     }
 
@@ -75,7 +65,7 @@ const Register = () => {
         password: formData.password,
         role: formData.role,
         ...(formData.role === 'technician' && {
-          specializzazione: formData.specializzazione,
+          specializzazioni: formData.specializzazioni,
           porto_base: formData.porto_base,
           telefono: formData.telefono
         })
@@ -240,20 +230,53 @@ const Register = () => {
             {/* Technician-specific fields */}
             {formData.role === 'technician' && (
               <>
-                <div>
-                  <label className="block text-sm font-medium text-[#0A2342] mb-1">Specializzazione *</label>
-                  <select
-                    name="specializzazione"
-                    value={formData.specializzazione}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1D9E75] focus:border-transparent"
-                    required
-                  >
-                    <option value="">Seleziona specializzazione</option>
-                    {specializations.map(spec => (
-                      <option key={spec} value={spec}>{spec}</option>
+                                <div>
+                  <label className="block text-sm font-medium text-[#0A2342] mb-2">
+                    Specializzazioni *
+                    <span className="text-xs text-slate-400 ml-2 font-normal">
+                      Seleziona tutte le aree in cui operi
+                    </span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto border border-slate-200 rounded-lg p-3">
+                    {[
+                      { id: 'motore',       label: '⚙️ Motore & Propulsione' },
+                      { id: 'elettrico',    label: '⚡ Elettrico & Elettronico' },
+                      { id: 'scafo',        label: '🛥️ Scafo & Struttura' },
+                      { id: 'coperta',      label: '⚓ Coperta & Attrezzatura' },
+                      { id: 'impianti',     label: '🔩 Impianti di Bordo' },
+                      { id: 'navigazione',  label: '🧭 Navigazione & Strumentazione' },
+                      { id: 'tappezzeria',  label: '🪡 Tappezzeria & Tessuti' },
+                      { id: 'emergenza',    label: '🚨 Emergenza' },
+                      { id: 'lavaggi',      label: '🧼 Lavaggi & Pulizia' },
+                      { id: 'vetri',        label: '🪟 Vetri & Vetrate' },
+                      { id: 'wrapping',     label: '🎨 Wrapping & Pellicole' },
+                      { id: 'spurghi',      label: '💧 Spurghi & Alta Pressione' },
+                      { id: 'falegname',    label: '🪵 Falegname & Carpentiere' },
+                      { id: 'idraulico',    label: '🔧 Idraulico & Tubista' },
+                      { id: 'verniciatore', label: '🖌️ Verniciatore & Lucidatore' },
+                      { id: 'lavanderia',   label: '👕 Lavanderia' },
+                    ].map(cat => (
+                      <label key={cat.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 rounded p-1">
+                        <input
+                          type="checkbox"
+                          value={cat.id}
+                          checked={formData.specializzazioni?.includes(cat.id) || false}
+                          onChange={(e) => {
+                            const current = formData.specializzazioni || [];
+                            const updated = e.target.checked
+                              ? [...current, cat.id]
+                              : current.filter(s => s !== cat.id);
+                            setFormData({ ...formData, specializzazioni: updated });
+                          }}
+                          className="rounded border-slate-300 text-[#1D9E75]"
+                        />
+                        {cat.label}
+                      </label>
                     ))}
-                  </select>
+                  </div>
+                  {formData.specializzazioni?.length === 0 && (
+                    <p className="text-xs text-amber-600 mt-1">Seleziona almeno una specializzazione</p>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
