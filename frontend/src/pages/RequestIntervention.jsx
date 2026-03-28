@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API, UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
-import { Anchor, ArrowLeft, ArrowRight, CheckCircle, Upload, MapPin, Star, Award, AlertCircle, Sparkles } from 'lucide-react';
+import { Anchor, ArrowLeft, ArrowRight, CheckCircle, Upload, MapPin, Star, AlertCircle, Sparkles } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -366,7 +366,7 @@ const RequestIntervention = () => {
           </div>
         )}
 
-        {/* Step 4 - Corretto e rifinito */}
+        {/* Step 4 */}
         {step === 4 && (
           <div>
             <h2 className="text-3xl font-bold text-[#0A2342] mb-3">
@@ -398,7 +398,7 @@ const RequestIntervention = () => {
                           <span className="font-medium">{tech.specialization}</span>
                           <span className="flex items-center gap-1">
                             <MapPin className="w-4 h-4" />
-                            {tech.location}
+                            {tech.location} {tech.distance}
                           </span>
                           {tech.rating > 0 && (
                             <span className="flex items-center gap-1 font-medium text-amber-600">
