@@ -100,7 +100,8 @@ class TechnicianProfile(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
     name: str
-    specialization: str
+    specialization: str  # kept for backward compat (primo valore)
+    specializations: List[str] = []  # array completo specializzazioni
     location: str
     distance: str
     rating: float
