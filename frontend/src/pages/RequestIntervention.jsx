@@ -27,14 +27,22 @@ const RequestIntervention = () => {
   const [aiResult, setAiResult] = useState(null);
 
   const categories = [
-    { id: 'motore', icon: '🔧', name: 'Motore & Propulsione', specialization: 'Motore & Propulsione' },
-    { id: 'elettrico', icon: '⚡', name: 'Impianto Elettrico', specialization: 'Impianto Elettrico' },
-    { id: 'carena', icon: '🚢', name: 'Carena & Antifouling', specialization: 'Carena & Antifouling' },
-    { id: 'navigazione', icon: '🧭', name: 'Navigazione & Elettronica', specialization: 'Navigazione & Elettronica' },
-    { id: 'rigging', icon: '⛵', name: 'Rigging & Vele', specialization: 'Rigging & Vele' },
-    { id: 'idraulica', icon: '💧', name: 'Idraulica & Impianti', specialization: 'Idraulica & Impianti' },
-    { id: 'emergenza', icon: '🚨', name: 'EMERGENZA', specialization: 'Multidisciplinare', isEmergency: true },
-    { id: 'refit', icon: '🔨', name: 'Refit & Ristrutturazione', specialization: 'Multidisciplinare' }
+    { id: 'motore',       icon: '⚙️', name: 'Motore & Propulsione' },
+    { id: 'elettrico',    icon: '⚡', name: 'Elettrico & Elettronico' },
+    { id: 'scafo',        icon: '🛥️', name: 'Scafo & Struttura' },
+    { id: 'coperta',      icon: '⚓', name: 'Coperta & Attrezzatura' },
+    { id: 'impianti',     icon: '🔩', name: 'Impianti di Bordo' },
+    { id: 'navigazione',  icon: '🧭', name: 'Navigazione & Strumentazione' },
+    { id: 'tappezzeria',  icon: '🪡', name: 'Tappezzeria & Tessuti' },
+    { id: 'lavaggi',      icon: '🧼', name: 'Lavaggi & Pulizia' },
+    { id: 'vetri',        icon: '🪟', name: 'Vetri & Vetrate' },
+    { id: 'wrapping',     icon: '🎨', name: 'Wrapping & Pellicole' },
+    { id: 'spurghi',      icon: '💧', name: 'Spurghi & Alta Pressione' },
+    { id: 'falegname',    icon: '🪵', name: 'Falegname & Carpentiere' },
+    { id: 'idraulico',    icon: '🔧', name: 'Idraulico & Tubista' },
+    { id: 'verniciatore', icon: '🖌️', name: 'Verniciatore & Lucidatore' },
+    { id: 'lavanderia',   icon: '👕', name: 'Lavanderia' },
+    { id: 'emergenza',    icon: '🚨', name: 'EMERGENZA', isEmergency: true },
   ];
 
   useEffect(() => {
@@ -45,7 +53,11 @@ const RequestIntervention = () => {
 
   const fetchTechnicians = async () => {
     try {
-      const response = await axios.get(`${API}/technicians/available`);
+      const categoryId = categories.find(c => c.name === formData.category)?.id;
+      const url = categoryId
+        ? `${API}/technicians/available?category=${categoryId}`
+        : `${API}/technicians/available`;
+      const response = await axios.get(url);
       setTechnicians(response.data);
     } catch (err) {
       console.error('Error fetching technicians:', err);
@@ -136,10 +148,7 @@ const RequestIntervention = () => {
   const isEmergency = selectedCategory?.isEmergency;
   const filteredTechnicians = isEmergency
     ? technicians
-    : technicians.filter(t =>
-        t.specialization === selectedCategory?.specialization ||
-        t.specialization === 'Multidisciplinare'
-      );
+    : technicians; // ordinamento già fatto dal backend (specializzati prima, altri in fondo)
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
