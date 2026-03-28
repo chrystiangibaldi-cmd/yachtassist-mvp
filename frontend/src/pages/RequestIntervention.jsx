@@ -38,7 +38,9 @@ const RequestIntervention = () => {
   ];
 
   useEffect(() => {
-    if (step === 4) fetchTechnicians();
+    if (step === 4) {
+      fetchTechnicians();
+    }
   }, [step]);
 
   const fetchTechnicians = async () => {
@@ -78,7 +80,6 @@ const RequestIntervention = () => {
       });
       const data = await response.json();
       setAiResult(data);
-      // Precompila urgenza se suggerita dall'AI
       if (data.urgency && data.urgency !== 'emergenza') {
         setFormData(prev => ({ ...prev, urgency: data.urgency }));
       }
@@ -205,7 +206,7 @@ const RequestIntervention = () => {
           </div>
         )}
 
-        {/* Step 2 — con AI */}
+        {/* Step 2 */}
         {step === 2 && (
           <div>
             <h2 className="text-3xl font-bold text-[#0A2342] mb-3">Descrivi il problema</h2>
@@ -225,7 +226,6 @@ const RequestIntervention = () => {
                 </div>
               </div>
 
-              {/* Pulsante AI */}
               <Button
                 onClick={handleAnalyzeWithAI}
                 disabled={aiLoading || formData.description.length < 10}
@@ -235,7 +235,6 @@ const RequestIntervention = () => {
                 {aiLoading ? 'Analisi AI in corso...' : 'Analizza con AI'}
               </Button>
 
-              {/* Risultato AI */}
               {aiResult && (
                 <div className="bg-[#0A2342]/5 border-2 border-[#0A2342]/20 rounded-lg p-5">
                   <div className="flex items-center gap-2 mb-3">
@@ -367,7 +366,7 @@ const RequestIntervention = () => {
           </div>
         )}
 
-        {/* Step 4 */}
+        {/* Step 4 - Corretto e rifinito */}
         {step === 4 && (
           <div>
             <h2 className="text-3xl font-bold text-[#0A2342] mb-3">
@@ -380,14 +379,14 @@ const RequestIntervention = () => {
               {filteredTechnicians.map((tech) => (
                 <div
                   key={tech.id}
-                  className={`bg-white border-2 rounded-lg p-6 transition-all ${
+                  className={`bg-white border-2 rounded-lg p-6 transition-all duration-200 ${
                     isEmergency ? 'border-red-600' :
-                    formData.selectedTechnician === tech.id ? 'border-[#1D9E75] bg-[#1D9E75]/5' : 'border-slate-200 hover:border-slate-300'
+                    formData.selectedTechnician === tech.id ? 'border-[#1D9E75] bg-[#1D9E75]/5 shadow-md' : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 rounded-full flex items-center justify-center border-2 border-slate-200 overflow-hidden bg-[#0A2342]">
+                      <div className="w-16 h-16 rounded-full flex items-center justify-center border-2 border-slate-200 overflow-hidden bg-[#0A2342] shrink-0">
                         {tech.avatar_url
                           ? <img src={tech.avatar_url} alt={tech.name} className="w-full h-full object-cover" />
                           : <span className="text-white text-xl font-bold">{tech.name.charAt(0)}</span>
@@ -395,18 +394,18 @@ const RequestIntervention = () => {
                       </div>
                       <div>
                         <h3 className="text-xl font-semibold text-[#0A2342]">{tech.name}</h3>
-                        <div className="flex items-center gap-3 text-sm text-slate-600 mt-1">
+                        <div className="flex items-center gap-3 text-sm text-slate-600 mt-1 flex-wrap">
                           <span className="font-medium">{tech.specialization}</span>
                           <span className="flex items-center gap-1">
                             <MapPin className="w-4 h-4" />
                             {tech.location}
                           </span>
-                          {tech.rating > 0 &&
+                          {tech.rating > 0 && (
                             <span className="flex items-center gap-1 font-medium text-amber-600">
                               <Star className="w-4 h-4 fill-amber-400" />
                               {tech.rating}
                             </span>
-                          }
+                          )}
                         </div>
                       </div>
                     </div>
@@ -417,7 +416,7 @@ const RequestIntervention = () => {
                     ) : (
                       <Button
                         onClick={() => setFormData({ ...formData, selectedTechnician: tech.id })}
-                        className={`px-6 h-11 font-medium transition-colors ${
+                        className={`px-6 h-11 font-medium transition-all ${
                           formData.selectedTechnician === tech.id
                             ? 'bg-[#1D9E75] hover:bg-[#1D9E75]/90 text-white'
                             : 'bg-white border-2 border-[#1D9E75] text-[#1D9E75] hover:bg-[#1D9E75]/10'
@@ -434,12 +433,17 @@ const RequestIntervention = () => {
               <Button onClick={handleBack} variant="outline" className="flex-1">
                 <ArrowLeft className="w-4 h-4 mr-2" />Indietro
               </Button>
-              <Button onClick={() => setStep(5)} disabled={!formData.selectedTechnician} className="flex-1 bg-[#1D9E75] hover:bg-[#1D9E75]/90 disabled:opacity-50">
+              <Button 
+                onClick={() => setStep(5)} 
+                disabled={!formData.selectedTechnician} 
+                className="flex-1 bg-[#168966] hover:bg-[#137557] text-white disabled:opacity-50"
+              >
                 Avanti<ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
           </div>
         )}
+
         {/* Step 5 */}
         {step === 5 && (
           <div className="text-center">
