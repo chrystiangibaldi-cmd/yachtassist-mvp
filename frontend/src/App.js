@@ -12,6 +12,8 @@ import CreateTicket from '@/pages/CreateTicket';
 import TicketDetail from '@/pages/TicketDetail';
 import RequestIntervention from '@/pages/RequestIntervention';
 import OnboardingYacht from '@/pages/OnboardingYacht';
+import ForgotPassword from '@/pages/ForgotPassword';
+import ResetPassword from '@/pages/ResetPassword';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -85,6 +87,8 @@ function App() {
           {/* Auth routes */}
           <Route path="/login" element={<RealLogin />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/demo" element={<Login />} />
           <Route path="/reset-demo" element={<ResetDemo />} />
           
