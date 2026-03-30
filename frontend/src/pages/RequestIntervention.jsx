@@ -26,6 +26,8 @@ const RequestIntervention = () => {
   const [error, setError] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState(null);
+  const [expandedCategory, setExpandedCategory] = useState(null);
+  const [selectedSubcategories, setSelectedSubcategories] = useState([]);
 
   const categories = [
     { id: 'motore', icon: '⚙️', name: 'Motore & Propulsione', subcategories: ['Avaria motore EB/FB', 'Guasto motore EB/FB', 'Pezzi di ricambio', 'Tagliando ORD', 'Tagliando STR', 'Tagliando generatori', 'Elica e asse', 'Piede poppiero', 'Fuoribordo'] },
@@ -70,31 +72,26 @@ const RequestIntervention = () => {
   };
 
   const handleCategorySelect = (category) => {
-    setFormData({ ...formData, category: category.name });
     if (category.isEmergency) {
       setFormData(prev => ({ ...prev, category: category.name, urgency: 'emergenza' }));
-    }
-    setStep(2);
-  };
-
-  const handleAnalyzeWithAI = async () => {
-    if (!formData.description || formData.description.length < 10) {
-      setError('Scrivi almeno una breve descrizione prima di analizzare');
+      setStep(2);
       return;
     }
-    setError('');
-    setAiLoading(true);
-    setAiResult(null);
+    if (expandedCategory?.id === category.id) {
+      setExpandedCategory(null);
+    } else {
+      setExpandedCategory(category);
+      setSelectedSubcategories([]);
+    }
+};
 
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/ai/diagnose`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          description: formData.description,
-          category: formData.category
-        })
-      });
+const handleSubcategoryConfirm = () => {
+    const subLabel = selectedSubcategories.length > 0
+      ? ` — ${selectedSubcategories.join(', ')}`
+      : '';
+    setFormData(prev => ({ ...prev, category: expandedCategory.name + subLabel }));
+    setStep(2);
+};
       const data = await response.json();
       setAiResult(data);
       if (data.urgency && data.urgency !== 'emergenza') {
@@ -193,32 +190,72 @@ const RequestIntervention = () => {
         )}
 
         {/* Step 1 */}
-        {step === 1 && (
-          <div>
-            <h2 className="text-3xl font-bold text-[#0A2342] mb-3">Seleziona la categoria</h2>
-            <p className="text-lg text-slate-600 mb-8">Che tipo di intervento ti serve?</p>
-            <div className="grid grid-cols-2 gap-4">
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => handleCategorySelect(cat)}
-                  className={`p-6 rounded-lg border-2 transition-all text-left ${
-                    cat.isEmergency
-                      ? 'border-red-600 bg-red-50 hover:bg-red-100 col-span-2 animate-pulse'
-                      : 'border-slate-200 hover:border-[#1D9E75] hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="text-4xl">{cat.icon}</span>
-                    <h3 className={`text-lg font-semibold ${cat.isEmergency ? 'text-red-700' : 'text-[#0A2342]'}`}>
-                      {cat.name}
-                    </h3>
-                  </div>
-                </button>
-              ))}
+       {step === 1 && (
+  <div>
+    <h2 className="text-3xl font-bold text-[#0A2342] mb-3">Seleziona la categoria</h2>
+    <p className="text-lg text-slate-600 mb-8">Che tipo di intervento ti serve?</p>
+    <div className="grid grid-cols-2 gap-4">
+      {categories.map((cat) => (
+        <div key={cat.id} className={`${cat.isEmergency ? 'col-span-2' : ''} ${expandedCategory?.id === cat.id ? 'col-span-2' : ''}`}>
+          <button
+            onClick={() => handleCategorySelect(cat)}
+            className={`w-full p-6 rounded-lg border-2 transition-all text-left ${
+              cat.isEmergency
+                ? 'border-red-600 bg-red-50 hover:bg-red-100 animate-pulse'
+                : expandedCategory?.id === cat.id
+                ? 'border-[#1D9E75] bg-[#1D9E75]/5'
+                : 'border-slate-200 hover:border-[#1D9E75] hover:bg-slate-50'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-4xl">{cat.icon}</span>
+                <h3 className={`text-lg font-semibold ${cat.isEmergency ? 'text-red-700' : 'text-[#0A2342]'}`}>
+                  {cat.name}
+                </h3>
+              </div>
+              {!cat.isEmergency && (
+                <span className="text-slate-400 text-xl">
+                  {expandedCategory?.id === cat.id ? '▲' : '▼'}
+                </span>
+              )}
             </div>
-          </div>
-        )}
+          </button>
+
+          {/* Accordion subcategorie */}
+          {expandedCategory?.id === cat.id && cat.subcategories?.length > 0 && (
+            <div className="border-2 border-t-0 border-[#1D9E75] rounded-b-lg bg-white p-4">
+              <p className="text-sm text-slate-500 mb-3">Seleziona il tipo di intervento (opzionale):</p>
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                {cat.subcategories.map((sub) => (
+                  <label key={sub} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 rounded p-1">
+                    <input
+                      type="checkbox"
+                      checked={selectedSubcategories.includes(sub)}
+                      onChange={(e) => {
+                        setSelectedSubcategories(prev =>
+                          e.target.checked ? [...prev, sub] : prev.filter(s => s !== sub)
+                        );
+                      }}
+                      className="rounded border-slate-300 text-[#1D9E75]"
+                    />
+                    <span className="text-slate-700">{sub}</span>
+                  </label>
+                ))}
+              </div>
+              <button
+                onClick={handleSubcategoryConfirm}
+                className="w-full py-2 bg-[#1D9E75] text-white rounded-lg font-medium hover:bg-[#1D9E75]/90 transition-colors"
+              >
+                Continua →
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
         {/* Step 2 */}
         {step === 2 && (
