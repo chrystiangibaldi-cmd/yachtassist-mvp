@@ -539,7 +539,7 @@ async def create_generic_ticket(request: CreateTicketRequest, user_id: str):
         "technician_id": None, "status": "aperto",
         "urgency": urgency_map.get(request.urgency, "media"),
         "work_items": [work_item], "category": request.category,
-        "description": request.description, "photos": request.photos or [],
+        "description": request.description, "photos": [p.dict() for p in request.photos] if request.photos else [],
         "price_min": 100, "price_max": 500, "final_price": None,
         "commission": None, "technician_payment": None,
         "marina": request.marina, "appointment": None, "documents": [],
@@ -551,7 +551,8 @@ async def create_generic_ticket(request: CreateTicketRequest, user_id: str):
     if user and user.get("email"):
         ticket_html = f"""<div style="font-family: Arial, sans-serif;"><h2>Ticket #{ticket_id} creato</h2><p>Categoria: {request.category}</p></div>"""
         asyncio.create_task(send_email_notification(user["email"], f"Ticket #{ticket_id} creato - YachtAssist", ticket_html))
-    return {"ticket": Ticket(**ticket_doc), "success": True}
+    ticket_doc_clean = {k: v for k, v in ticket_doc.items()}
+    return {"ticket": ticket_doc_clean, "success": True}
 
 @api_router.post("/tickets/{ticket_id}/close")
 async def close_ticket(ticket_id: str, request: CloseTicketRequest):
