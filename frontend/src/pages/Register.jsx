@@ -254,7 +254,7 @@ const Register = () => {
   { id: 'vetri',       label: '🔍 Vetri & Vetrate' },
   { id: 'wrapping',          label: '🎨 Wrapping & Pellicole' },
   { id: 'spurghi',           label: '💧 Spurghi & Alta Pressione' },
-  { id: 'falegname',   label: '🪚 Falegname & Carpentiere' },
+  { id: 'falegname', label: '🛠️ Falegname & Carpentiere' },
   { id: 'idraulico',         label: '🔧 Idraulico & Tubista' },
   { id: 'verniciatore',      label: '🖌️ Verniciatore & Lucidatore' },
   { id: 'lavanderia',        label: '👕 Lavanderia' },
