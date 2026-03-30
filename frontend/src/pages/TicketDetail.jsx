@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { API, UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
-import { Anchor, ArrowLeft, CheckCircle, FileText, Calendar, Star, Award, CreditCard, Lock } from 'lucide-react';
+import { Anchor, ArrowLeft, CheckCircle, FileText, Calendar, Star, Award, CreditCard, Lock, Upload, Paperclip } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
