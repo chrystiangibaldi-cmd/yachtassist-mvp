@@ -1,4 +1,4 @@
-// v2.0 - 16 categories
+// v3.0 - 20 categories
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
