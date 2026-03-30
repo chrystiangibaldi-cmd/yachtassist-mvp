@@ -239,40 +239,43 @@ const Register = () => {
                   </label>
                   <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto border border-slate-200 rounded-lg p-3">
                     {[
-                      { id: 'motore',       label: '⚙️ Motore & Propulsione' },
-                      { id: 'elettrico',    label: '⚡ Elettrico & Elettronico' },
-                      { id: 'scafo',        label: '🛥️ Scafo & Struttura' },
-                      { id: 'coperta',      label: '⚓ Coperta & Attrezzatura' },
-                      { id: 'impianti',     label: '🔩 Impianti di Bordo' },
-                      { id: 'navigazione',  label: '🧭 Navigazione & Strumentazione' },
-                      { id: 'tappezzeria',  label: '🪡 Tappezzeria & Tessuti' },
-                      { id: 'emergenza',    label: '🚨 Emergenza' },
-                      { id: 'lavaggi',      label: '🧼 Lavaggi & Pulizia' },
-                      { id: 'vetri',        label: '🪟 Vetri & Vetrate' },
-                      { id: 'wrapping',     label: '🎨 Wrapping & Pellicole' },
-                      { id: 'spurghi',      label: '💧 Spurghi & Alta Pressione' },
-                      { id: 'falegname',    label: '🪵 Falegname & Carpentiere' },
-                      { id: 'idraulico',    label: '🔧 Idraulico & Tubista' },
-                      { id: 'verniciatore', label: '🖌️ Verniciatore & Lucidatore' },
-                      { id: 'lavanderia',   label: '👕 Lavanderia' },
-                    ].map(cat => (
-                      <label key={cat.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 rounded p-1">
-                        <input
-                          type="checkbox"
-                          value={cat.id}
-                          checked={formData.specializzazioni?.includes(cat.id) || false}
-                          onChange={(e) => {
-                            const current = formData.specializzazioni || [];
-                            const updated = e.target.checked
-                              ? [...current, cat.id]
-                              : current.filter(s => s !== cat.id);
-                            setFormData({ ...formData, specializzazioni: updated });
-                          }}
-                          className="rounded border-slate-300 text-[#1D9E75]"
-                        />
-                        {cat.label}
-                      </label>
-                    ))}
+  { id: 'motore',            label: '⚙️ Motore & Propulsione' },
+  { id: 'elettrico',         label: '⚡ Elettrico & Elettronico' },
+  { id: 'oleodinamica',      label: '🔩 Oleodinamica' },
+  { id: 'aria_condizionata', label: '❄️ Aria Condizionata' },
+  { id: 'scafo',             label: '🛥️ Scafo & Struttura' },
+  { id: 'coperta',           label: '⚓ Coperta & Attrezzatura' },
+  { id: 'impianti',          label: '🔩 Impianti di Bordo' },
+  { id: 'navigazione',       label: '🧭 Navigazione & Strumentazione' },
+  { id: 'elettrodomestici',  label: '🍳 Elettrodomestici di Bordo' },
+  { id: 'stabilizzatori',    label: '⚖️ Stabilizzatori' },
+  { id: 'tappezzeria',       label: '🪡 Tappezzeria & Tessuti' },
+  { id: 'lavaggi',           label: '🧼 Lavaggi & Pulizia' },
+  { id: 'vetri',             label: '🪟 Vetri & Vetrate' },
+  { id: 'wrapping',          label: '🎨 Wrapping & Pellicole' },
+  { id: 'spurghi',           label: '💧 Spurghi & Alta Pressione' },
+  { id: 'falegname',         label: '🪵 Falegname & Carpentiere' },
+  { id: 'idraulico',         label: '🔧 Idraulico & Tubista' },
+  { id: 'verniciatore',      label: '🖌️ Verniciatore & Lucidatore' },
+  { id: 'lavanderia',        label: '👕 Lavanderia' },
+].map(cat => (
+  <label key={cat.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 rounded p-1">
+    <input
+      type="checkbox"
+      value={cat.id}
+      checked={formData.specializzazioni?.includes(cat.id) || false}
+      onChange={(e) => {
+        const current = formData.specializzazioni || [];
+        const updated = e.target.checked
+          ? [...current, cat.id]
+          : current.filter(s => s !== cat.id);
+        setFormData({ ...formData, specializzazioni: updated });
+      }}
+      className="rounded border-slate-300 text-[#1D9E75]"
+    />
+    {cat.label}
+  </label>
+))}
                   </div>
                   {formData.specializzazioni?.length === 0 && (
                     <p className="text-xs text-amber-600 mt-1">Seleziona almeno una specializzazione</p>
