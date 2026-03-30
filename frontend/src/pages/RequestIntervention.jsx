@@ -43,7 +43,7 @@ const RequestIntervention = () => {
     { id: 'vetri',       icon: '🔍', name: 'Vetri & Vetrate' },
     { id: 'wrapping',          icon: '🎨', name: 'Wrapping & Pellicole' },
     { id: 'spurghi',           icon: '💧', name: 'Spurghi & Alta Pressione' },
-    { id: 'falegname',   icon: '🪚', name: 'Falegname & Carpentiere' },
+    { id: 'falegname', label: '🛠️ Falegname & Carpentiere' },
     { id: 'idraulico',         icon: '🔧', name: 'Idraulico & Tubista' },
     { id: 'verniciatore',      icon: '🖌️', name: 'Verniciatore & Lucidatore' },
     { id: 'lavanderia',        icon: '👕', name: 'Lavanderia' },
