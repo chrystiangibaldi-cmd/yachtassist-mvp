@@ -563,6 +563,23 @@ async def close_ticket(ticket_id: str, request: CloseTicketRequest):
         ticket = await db.tickets.find_one({"id": ticket_id}, {"_id": 0})
         await db.yachts.update_one({"id": ticket["yacht_id"]}, {"$set": {"compliance_score": 100}})
     return {"success": True}
+    class AddPhotosRequest(BaseModel):
+    photos: List[Any] = []
+
+@api_router.post("/tickets/{ticket_id}/add-photos")
+async def add_photos_to_ticket(ticket_id: str, request: AddPhotosRequest):
+    ticket = await db.tickets.find_one({"id": ticket_id})
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    current_photos = ticket.get("photos", [])
+    updated_photos = current_photos + request.photos
+    if len(updated_photos) > 5:
+        raise HTTPException(status_code=400, detail="Massimo 5 allegati per ticket")
+    await db.tickets.update_one(
+        {"id": ticket_id},
+        {"$set": {"photos": updated_photos}}
+    )
+    return {"success": True}
 
 @api_router.post("/ai/diagnose")
 async def ai_diagnose(request: DiagnoseRequest):
