@@ -197,6 +197,13 @@ class DiagnoseRequest(BaseModel):
     description: str
     category: str
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
 # Seed demo data
 async def seed_data(force_reset=False):
     if force_reset:
@@ -622,6 +629,87 @@ async def reset_demo(secret: str = ""):
     await seed_data(force_reset=True)
     logger.info("Demo data reset to initial state")
     return {"success": True, "message": "Demo data reset successfully"}
+    @api_router.post("/auth/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest):
+    """Invia email di reset password"""
+    user = await db.users.find_one({"email": request.email})
+    if not user:
+        # Non rivelare se l'email esiste o no
+        return {"success": True, "message": "Se l'email esiste riceverai un link di reset"}
+    
+    # Genera token sicuro
+    import secrets
+    from datetime import timedelta
+    token = secrets.token_urlsafe(32)
+    expires_at = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+    
+    # Salva token nel DB
+    await db.password_resets.insert_one({
+        "token": token,
+        "user_id": user["id"],
+        "email": request.email,
+        "expires_at": expires_at,
+        "used": False
+    })
+    
+    # URL frontend
+    frontend_url = os.environ.get("FRONTEND_URL", "https://ample-exploration-production-0c33.up.railway.app")
+    reset_link = f"{frontend_url}/reset-password?token={token}"
+    
+    reset_html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #0A2342, #1D9E75); padding: 30px; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">YachtAssist</h1>
+        </div>
+        <div style="background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-radius: 0 0 10px 10px;">
+            <p style="color: #0A2342; font-size: 16px;">Ciao,</p>
+            <p style="color: #64748b;">Hai richiesto il reset della password per il tuo account YachtAssist.</p>
+            <p style="color: #64748b;">Clicca il pulsante qui sotto per impostare una nuova password. Il link scade tra <strong>1 ora</strong>.</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{reset_link}" style="background: #1D9E75; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">
+                    Reimposta Password
+                </a>
+            </div>
+            <p style="color: #94a3b8; font-size: 12px;">Se non hai richiesto il reset, ignora questa email.</p>
+        </div>
+    </div>
+    """
+    asyncio.create_task(send_email_notification(request.email, "Reset password - YachtAssist", reset_html))
+    return {"success": True, "message": "Se l'email esiste riceverai un link di reset"}
+
+
+@api_router.post("/auth/reset-password")
+async def reset_password(request: ResetPasswordRequest):
+    """Reimposta password con token valido"""
+    from datetime import timedelta
+    
+    reset_doc = await db.password_resets.find_one({
+        "token": request.token,
+        "used": False
+    })
+    
+    if not reset_doc:
+        raise HTTPException(status_code=400, detail="Token non valido o già utilizzato")
+    
+    # Verifica scadenza
+    expires_at = datetime.fromisoformat(reset_doc["expires_at"])
+    if datetime.now(timezone.utc) > expires_at:
+        raise HTTPException(status_code=400, detail="Token scaduto. Richiedi un nuovo link.")
+    
+    # Aggiorna password
+    new_hashed = hash_password(request.new_password)
+    await db.users.update_one(
+        {"id": reset_doc["user_id"]},
+        {"$set": {"password": new_hashed}}
+    )
+    
+    # Marca token come usato
+    await db.password_resets.update_one(
+        {"token": request.token},
+        {"$set": {"used": True}}
+    )
+    
+    return {"success": True, "message": "Password aggiornata con successo"}
 
 class CreateYachtRequest(BaseModel):
     nome: str
