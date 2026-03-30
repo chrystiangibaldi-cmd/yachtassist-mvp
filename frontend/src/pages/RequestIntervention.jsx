@@ -276,12 +276,69 @@ const RequestIntervention = () => {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-[#0A2342] mb-2">Foto (opzionale)</label>
-                <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-[#1D9E75] transition-colors cursor-pointer">
+                <label className="block text-sm font-medium text-[#0A2342] mb-2">
+                  Allegati (opzionale)
+                  <span className="text-xs text-slate-400 ml-2 font-normal">JPG, PNG, PDF — max 2MB cad., fino a 5 file</span>
+                </label>
+                <div
+                  onClick={() => document.getElementById('file-upload-input').click()}
+                  className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-[#1D9E75] transition-colors cursor-pointer"
+                >
                   <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                  <p className="text-slate-600">Carica foto del problema</p>
-                  <p className="text-sm text-slate-400 mt-1">JPG, PNG fino a 5MB</p>
+                  <p className="text-slate-600">Clicca per caricare foto o documenti</p>
+                  <p className="text-sm text-slate-400 mt-1">JPG, PNG, PDF — max 2MB per file</p>
                 </div>
+                <input
+                  id="file-upload-input"
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,application/pdf"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files);
+                    if (formData.photos.length + files.length > 5) {
+                      setError('Puoi caricare massimo 5 file per ticket');
+                      return;
+                    }
+                    const tooBig = files.filter(f => f.size > 2 * 1024 * 1024);
+                    if (tooBig.length > 0) {
+                      setError(`File troppo grandi (max 2MB): ${tooBig.map(f => f.name).join(', ')}`);
+                      return;
+                    }
+                    setError('');
+                    const base64files = await Promise.all(files.map(file => new Promise((resolve) => {
+                      const reader = new FileReader();
+                      reader.onload = () => resolve({
+                        name: file.name,
+                        type: file.type,
+                        data: reader.result
+                      });
+                      reader.readAsDataURL(file);
+                    })));
+                    setFormData(prev => ({ ...prev, photos: [...prev.photos, ...base64files] }));
+                  }}
+                />
+                {formData.photos.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {formData.photos.map((file, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                        <div className="flex items-center gap-2 text-sm text-slate-700">
+                          {file.type === 'application/pdf'
+                            ? <span>📄</span>
+                            : <img src={file.data} alt={file.name} className="w-8 h-8 object-cover rounded" />
+                          }
+                          <span className="truncate max-w-[200px]">{file.name}</span>
+                        </div>
+                        <button
+                          onClick={() => setFormData(prev => ({ ...prev, photos: prev.photos.filter((_, i) => i !== idx) }))}
+                          className="text-red-400 hover:text-red-600 text-xs font-medium ml-2"
+                        >
+                          Rimuovi
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {!isEmergency && (
