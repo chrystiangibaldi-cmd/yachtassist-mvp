@@ -383,7 +383,52 @@ const handleAddAttachments = async (files) => {
             </div>
           </div>
         )}
+{/* Allegati ticket */}
+        <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-[#0A2342] flex items-center gap-2">
+              <Paperclip className="w-5 h-5" />
+              Allegati
+            </h3>
+            {ticket.status !== 'chiuso' && (
+              <label className="flex items-center gap-2 text-sm text-[#1D9E75] font-medium cursor-pointer hover:text-[#1D9E75]/80">
+                <Upload className="w-4 h-4" />
+                Aggiungi file
+                <input
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,application/pdf"
+                  className="hidden"
+                  onChange={(e) => handleAddAttachments(Array.from(e.target.files))}
+                />
+              </label>
+            )}
+          </div>
 
+          {uploadError && (
+            <p className="text-red-500 text-sm mb-3">{uploadError}</p>
+          )}
+          {uploading && (
+            <p className="text-slate-400 text-sm mb-3">Caricamento in corso...</p>
+          )}
+
+          {ticket.photos && ticket.photos.length > 0 ? (
+            <div className="space-y-2">
+              {ticket.photos.map((file, idx) => (
+                <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                  {file.type === 'application/pdf' ? (
+                    <FileText className="w-8 h-8 text-[#1D9E75] shrink-0" />
+                  ) : (
+                    <img src={file.data} alt={file.name} className="w-10 h-10 object-cover rounded border border-slate-200 shrink-0" />
+                  )}
+                  <span className="text-sm text-slate-700 truncate">{file.name}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-slate-400 text-sm">Nessun allegato caricato</p>
+          )}
+        </div>
         {ticket.documents && ticket.documents.length > 0 && (
           <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6">
             <h3 className="text-lg font-semibold text-[#0A2342] mb-4">Documenti</h3>
