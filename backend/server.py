@@ -9,7 +9,7 @@ import resend
 import json
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, Any
 from datetime import datetime, timezone
 import uuid
 from .auth import hash_password, verify_password, create_access_token
@@ -125,7 +125,7 @@ class Ticket(BaseModel):
     work_items: List[str]
     category: Optional[str] = None
     description: Optional[str] = None
-    photos: Optional[List[str]] = []
+    photos: Optional[List[Any]] = []
     price_min: int
     price_max: int
     final_price: Optional[int] = None
