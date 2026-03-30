@@ -91,8 +91,36 @@ const handleSubcategoryConfirm = () => {
       : '';
     setFormData(prev => ({ ...prev, category: expandedCategory.name + subLabel }));
     setStep(2);
-};
+  };
+
+  const handleAnalyzeWithAI = async () => {
+    if (!formData.description || formData.description.length < 10) {
+      setError('Scrivi almeno una breve descrizione prima di analizzare');
+      return;
+    }
+    setError('');
+    setAiLoading(true);
+    setAiResult(null);
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/ai/diagnose`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: formData.description,
+          category: formData.category
+        })
+      });
       const data = await response.json();
+      setAiResult(data);
+      if (data.urgency && data.urgency !== 'emergenza') {
+        setFormData(prev => ({ ...prev, urgency: data.urgency }));
+      }
+    } catch (err) {
+      setError('Errore AI. Riprova tra qualche secondo.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
       setAiResult(data);
       if (data.urgency && data.urgency !== 'emergenza') {
         setFormData(prev => ({ ...prev, urgency: data.urgency }));
