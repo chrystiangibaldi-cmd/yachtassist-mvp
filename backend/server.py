@@ -137,12 +137,18 @@ class Ticket(BaseModel):
     quote_items: Optional[List[QuoteItem]] = None
     created_at: str
 
+
+class Attachment(BaseModel):
+    name: str
+    type: str
+    data: str  # base64 data URL
+
 class CreateTicketRequest(BaseModel):
     category: str
     description: str
     urgency: Literal["normale", "urgente", "emergenza"]
     marina: str
-    photos: Optional[List[str]] = []
+    photos: Optional[List[Attachment]] = []
 
 class LoginRequest(BaseModel):
     role: Literal["owner", "technician"]
