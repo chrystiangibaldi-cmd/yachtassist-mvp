@@ -629,7 +629,8 @@ async def reset_demo(secret: str = ""):
     await seed_data(force_reset=True)
     logger.info("Demo data reset to initial state")
     return {"success": True, "message": "Demo data reset successfully"}
-    @api_router.post("/auth/forgot-password")
+    
+@api_router.post("/auth/forgot-password")
 async def forgot_password(request: ForgotPasswordRequest):
     """Invia email di reset password"""
     user = await db.users.find_one({"email": request.email})
