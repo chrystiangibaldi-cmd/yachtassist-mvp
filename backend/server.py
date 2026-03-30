@@ -563,7 +563,8 @@ async def close_ticket(ticket_id: str, request: CloseTicketRequest):
         ticket = await db.tickets.find_one({"id": ticket_id}, {"_id": 0})
         await db.yachts.update_one({"id": ticket["yacht_id"]}, {"$set": {"compliance_score": 100}})
     return {"success": True}
-    class AddPhotosRequest(BaseModel):
+    
+class AddPhotosRequest(BaseModel):
     photos: List[Any] = []
 
 @api_router.post("/tickets/{ticket_id}/add-photos")
