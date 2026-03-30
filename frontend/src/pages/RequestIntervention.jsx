@@ -28,23 +28,27 @@ const RequestIntervention = () => {
   const [aiResult, setAiResult] = useState(null);
 
   const categories = [
-    { id: 'motore',       icon: '⚙️', name: 'Motore & Propulsione' },
-    { id: 'elettrico',    icon: '⚡', name: 'Elettrico & Elettronico' },
-    { id: 'scafo',        icon: '🛥️', name: 'Scafo & Struttura' },
-    { id: 'coperta',      icon: '⚓', name: 'Coperta & Attrezzatura' },
-    { id: 'impianti',     icon: '🔩', name: 'Impianti di Bordo' },
-    { id: 'navigazione',  icon: '🧭', name: 'Navigazione & Strumentazione' },
-    { id: 'tappezzeria',  icon: '🪡', name: 'Tappezzeria & Tessuti' },
-    { id: 'lavaggi',      icon: '🧼', name: 'Lavaggi & Pulizia' },
-    { id: 'vetri',        icon: '🪟', name: 'Vetri & Vetrate' },
-    { id: 'wrapping',     icon: '🎨', name: 'Wrapping & Pellicole' },
-    { id: 'spurghi',      icon: '💧', name: 'Spurghi & Alta Pressione' },
-    { id: 'falegname',    icon: '🪵', name: 'Falegname & Carpentiere' },
-    { id: 'idraulico',    icon: '🔧', name: 'Idraulico & Tubista' },
-    { id: 'verniciatore', icon: '🖌️', name: 'Verniciatore & Lucidatore' },
-    { id: 'lavanderia',   icon: '👕', name: 'Lavanderia' },
-    { id: 'emergenza',    icon: '🚨', name: 'EMERGENZA', isEmergency: true },
-  ];
+    { id: 'motore',            icon: '⚙️', name: 'Motore & Propulsione' },
+    { id: 'elettrico',         icon: '⚡', name: 'Elettrico & Elettronico' },
+    { id: 'oleodinamica',      icon: '🔩', name: 'Oleodinamica' },
+    { id: 'aria_condizionata', icon: '❄️', name: 'Aria Condizionata' },
+    { id: 'scafo',             icon: '🛥️', name: 'Scafo & Struttura' },
+    { id: 'coperta',           icon: '⚓', name: 'Coperta & Attrezzatura' },
+    { id: 'impianti',          icon: '🔩', name: 'Impianti di Bordo' },
+    { id: 'navigazione',       icon: '🧭', name: 'Navigazione & Strumentazione' },
+    { id: 'elettrodomestici',  icon: '🍳', name: 'Elettrodomestici di Bordo' },
+    { id: 'stabilizzatori',    icon: '⚖️', name: 'Stabilizzatori' },
+    { id: 'tappezzeria',       icon: '🪡', name: 'Tappezzeria & Tessuti' },
+    { id: 'lavaggi',           icon: '🧼', name: 'Lavaggi & Pulizia' },
+    { id: 'vetri',             icon: '🪟', name: 'Vetri & Vetrate' },
+    { id: 'wrapping',          icon: '🎨', name: 'Wrapping & Pellicole' },
+    { id: 'spurghi',           icon: '💧', name: 'Spurghi & Alta Pressione' },
+    { id: 'falegname',         icon: '🪵', name: 'Falegname & Carpentiere' },
+    { id: 'idraulico',         icon: '🔧', name: 'Idraulico & Tubista' },
+    { id: 'verniciatore',      icon: '🖌️', name: 'Verniciatore & Lucidatore' },
+    { id: 'lavanderia',        icon: '👕', name: 'Lavanderia' },
+    { id: 'emergenza',         icon: '🚨', name: 'EMERGENZA', isEmergency: true },
+];
 
   useEffect(() => {
     if (step === 4) {
