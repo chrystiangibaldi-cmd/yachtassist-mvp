@@ -4,6 +4,7 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 COPY package.json yarn.lock ./
+ARG CACHE_BUST=1
 RUN yarn install --no-frozen-lockfile
 
 COPY . .
