@@ -132,7 +132,8 @@ const TicketDetail = () => {
   const [yacht, setYacht] = useState(null);
   const [technician, setTechnician] = useState(null);
   const [showPayment, setShowPayment] = useState(false);
-
+  const [uploadError, setUploadError] = useState('');
+  const [uploading, setUploading] = useState(false);
   useEffect(() => {
     fetchData();
   }, [id]);
@@ -172,7 +173,35 @@ const TicketDetail = () => {
     await fetchData();
     navigate('/owner/dashboard');
   };
-
+const handleAddAttachments = async (files) => {
+    const tooBig = files.filter(f => f.size > 2 * 1024 * 1024);
+    if (tooBig.length > 0) {
+      setUploadError(`File troppo grandi (max 2MB): ${tooBig.map(f => f.name).join(', ')}`);
+      return;
+    }
+    const currentPhotos = ticket.photos || [];
+    if (currentPhotos.length + files.length > 5) {
+      setUploadError('Puoi caricare massimo 5 allegati per ticket');
+      return;
+    }
+    setUploadError('');
+    setUploading(true);
+    try {
+      const base64files = await Promise.all(files.map(file => new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve({ name: file.name, type: file.type, data: reader.result });
+        reader.readAsDataURL(file);
+      })));
+      await axios.post(`${API}/tickets/${id}/add-photos`, {
+        photos: base64files
+      });
+      await fetchData();
+    } catch (err) {
+      setUploadError('Errore durante il caricamento. Riprova.');
+    } finally {
+      setUploading(false);
+    }
+  };
   const handleCloseTechnician = async () => {
     try {
       await axios.post(`${API}/tickets/${id}/close`, {
