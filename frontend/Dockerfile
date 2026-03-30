@@ -3,7 +3,7 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
-COPY package.json yarn.lock ./
+COPY package.json ./
 ARG CACHE_BUST=1
 RUN yarn install --no-frozen-lockfile
 
@@ -14,10 +14,9 @@ ARG REACT_APP_BACKEND_URL=https://yachtassist-mvp-production.up.railway.app
 ARG REACT_APP_STRIPE_PUBLISHABLE_KEY
 ENV REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL
 ENV REACT_APP_STRIPE_PUBLISHABLE_KEY=$REACT_APP_STRIPE_PUBLISHABLE_KEY
-
-RUN yarn build
 ENV NODE_ENV=production
 ENV DISABLE_VISUAL_EDITS=true
+
 RUN yarn build
 
 # Production stage
