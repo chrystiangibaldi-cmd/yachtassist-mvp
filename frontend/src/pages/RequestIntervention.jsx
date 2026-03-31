@@ -121,16 +121,6 @@ const handleSubcategoryConfirm = () => {
       setAiLoading(false);
     }
   };
-      setAiResult(data);
-      if (data.urgency && data.urgency !== 'emergenza') {
-        setFormData(prev => ({ ...prev, urgency: data.urgency }));
-      }
-    } catch (err) {
-      setError('Errore AI. Riprova tra qualche secondo.');
-    } finally {
-      setAiLoading(false);
-    }
-  };
 
   const handleNext = () => {
     if (step === 2) {
