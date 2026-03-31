@@ -654,7 +654,7 @@ async def forgot_password(request: ForgotPasswordRequest):
     })
     
     # URL frontend
-    frontend_url = os.environ.get("FRONTEND_URL", "https://ample-exploration-production-0c33.up.railway.app")
+    frontend_url = os.environ.get("FRONTEND_URL", "https://gallant-beauty-production-c7e2.up.railway.app")
     reset_link = f"{frontend_url}/reset-password?token={token}"
     
     reset_html = f"""
