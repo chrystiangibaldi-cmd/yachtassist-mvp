@@ -59,7 +59,7 @@
   },
   "scripts": {
     "start": "craco start",
-    "build": "NODE_ENV=production DISABLE_VISUAL_EDITS=true craco build",
+    "build": "NODE_ENV=production craco build",
     "test": "craco test"
   },
   "browserslist": {
