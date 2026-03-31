@@ -4,7 +4,7 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 # Cache bust to force fresh build
-ARG CACHE_BUST=20260331v1
+ARG CACHE_BUST=20260331v3
 
 COPY package.json ./
 RUN yarn install --no-frozen-lockfile
