@@ -214,34 +214,48 @@ async def seed_data(force_reset=False):
         await db.checklist_items.delete_many({})
         await db.technician_profiles.delete_many({})
         await db.tickets.delete_many({})
+        await db.password_resets.delete_many({})
         logger.info("Force reset: All collections cleared")
-    
+
+    demo_password = hash_password("Demo2026!")
+    beta_password = hash_password("Beta2026!")
+
     users = [
         {
             "id": "owner-1",
             "name": "Chrystian Gibaldi",
-            "email": "chrystian@yachtassist.it",
+            "nome": "Chrystian",
+            "cognome": "Gibaldi",
+            "email": "demo@owner.it",
+            "password": demo_password,
             "role": "owner",
-            "avatar_url": "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&h=200&fit=crop"
+            "avatar_url": "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&h=200&fit=crop",
+            "created_at": datetime.now(timezone.utc).isoformat()
         },
         {
             "id": "tech-1",
             "name": "Enrico Gibaldi",
-            "email": "enrico@yachtassist.it",
+            "nome": "Enrico",
+            "cognome": "Gibaldi",
+            "email": "demo@tecnico.it",
+            "password": demo_password,
             "role": "technician",
-            "avatar_url": "https://images.unsplash.com/photo-1517524206127-48bbd363f3d7?w=200&h=200&fit=crop"
+            "specializzazione": "Motore & Propulsione",
+            "porto_base": "Livorno",
+            "telefono": "",
+            "avatar_url": "https://images.unsplash.com/photo-1517524206127-48bbd363f3d7?w=200&h=200&fit=crop",
+            "created_at": datetime.now(timezone.utc).isoformat()
         },
         {
-            "id": "tech-2",
-            "name": "Gianni Ferretti",
-            "email": "gianni@yachtassist.it",
-            "role": "technician"
-        },
-        {
-            "id": "tech-3",
-            "name": "Simone Russo",
-            "email": "simone@yachtassist.it",
-            "role": "technician"
+            "id": "beta-1",
+            "name": "Marco Rossi",
+            "nome": "Marco",
+            "cognome": "Rossi",
+            "email": "beta@yachtassist.it",
+            "password": beta_password,
+            "role": "owner",
+            "avatar_url": None,
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
     ]
     for user in users:
@@ -250,24 +264,40 @@ async def seed_data(force_reset=False):
             {"$setOnInsert": user},
             upsert=True
         )
-    
-    yachts = [{
-        "id": "yacht-1",
-        "name": "Suerte",
-        "model": "Sanlorenzo 50",
-        "owner_id": "owner-1",
-        "marina": "Marina di Pisa",
-        "category": "Motore",
-        "distance": "12 miglia",
-        "compliance_score": 67
-    }]
+
+    yachts = [
+        {
+            "id": "yacht-1",
+            "name": "Suerte",
+            "model": "Sanlorenzo 50",
+            "owner_id": "owner-1",
+            "marina": "Marina di Pisa",
+            "category": "Motore",
+            "distance": "12 miglia",
+            "compliance_score": 67,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+        {
+            "id": "yacht-beta-1",
+            "name": "Libeccio",
+            "model": "Azimut 40",
+            "owner_id": "beta-1",
+            "marina": "Marina di Livorno",
+            "category": "Motore",
+            "distance": "",
+            "compliance_score": 0,
+            "anno": 2019,
+            "lunghezza": "12m",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+    ]
     for yacht in yachts:
         await db.yachts.update_one(
             {"id": yacht["id"]},
             {"$setOnInsert": yacht},
             upsert=True
         )
-    
+
     checklist_items = [
         {"id": "item-1", "yacht_id": "yacht-1", "name": "Giubbotti 150N con luce automatica", "status": "conforme", "is_new_2025": True},
         {"id": "item-2", "yacht_id": "yacht-1", "name": "Salvagente anulare con boetta", "status": "conforme", "is_new_2025": False},
@@ -282,7 +312,7 @@ async def seed_data(force_reset=False):
             {"$setOnInsert": item},
             upsert=True
         )
-    
+
     technician_profiles = [
         {
             "id": "tech-1",
@@ -294,28 +324,6 @@ async def seed_data(force_reset=False):
             "rating": 4.9,
             "eco_certified": True,
             "avatar_url": "https://images.unsplash.com/photo-1517524206127-48bbd363f3d7?w=200&h=200&fit=crop"
-        },
-        {
-            "id": "tech-2",
-            "name": "Gianni Ferretti",
-            "specialization": "Scafo & Struttura",
-            "specializations": ["scafo", "verniciatore", "falegname", "idraulico"],
-            "location": "Pisa",
-            "distance": "12km",
-            "rating": 4.7,
-            "eco_certified": False,
-            "avatar_url": "https://images.pexels.com/photos/279949/pexels-photo-279949.jpeg?w=200&h=200&fit=crop"
-        },
-        {
-            "id": "tech-3",
-            "name": "Simone Russo",
-            "specialization": "Lavaggi & Pulizia",
-            "specializations": ["lavaggi", "tappezzeria", "vetri"],
-            "location": "Marina di Pisa",
-            "distance": "2km",
-            "rating": 4.6,
-            "eco_certified": False,
-            "avatar_url": "https://images.pexels.com/photos/6720529/pexels-photo-6720529.jpeg?w=200&h=200&fit=crop"
         }
     ]
     for profile in technician_profiles:
@@ -324,7 +332,7 @@ async def seed_data(force_reset=False):
             {"$setOnInsert": profile},
             upsert=True
         )
-    
+
     existing_ticket = await db.tickets.find_one({"id": "YA-2025-0847"})
     if not existing_ticket:
         ticket = {
@@ -334,26 +342,23 @@ async def seed_data(force_reset=False):
             "technician_id": None,
             "status": "aperto",
             "urgency": "alta",
+            "category": "Motore & Propulsione",
+            "description": "Zattera di salvataggio mancante e razzi paracadute scaduti. Necessaria sostituzione urgente per conformità.",
             "work_items": ["Fornitura zattera ISO 9650-1", "Sostituzione razzi paracadute × 2"],
+            "photos": [],
             "price_min": 180,
             "price_max": 380,
-            "final_price": 280,
-            "commission": 42,
-            "technician_payment": 238,
+            "final_price": None,
+            "commission": None,
+            "technician_payment": None,
             "marina": "Marina di Pisa",
             "appointment": None,
             "documents": [],
             "quote_items": None,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
-        await db.tickets.update_one(
-            {"id": ticket["id"]},
-            {"$setOnInsert": ticket},
-            upsert=True
-        )
+        await db.tickets.insert_one(ticket)
         logger.info("Demo ticket YA-2025-0847 created")
-    else:
-        logger.info("Demo ticket YA-2025-0847 already exists, skipping creation")
 
 @app.on_event("startup")
 async def startup_event():
@@ -630,7 +635,7 @@ async def reset_demo(secret: str = ""):
         raise HTTPException(status_code=403, detail="Non autorizzato")
     await seed_data(force_reset=True)
     logger.info("Demo data reset to initial state")
-    return {"success": True, "message": "Demo data reset successfully"}
+    return {"status": "ok", "message": "Demo reset completato"}
     
 @api_router.post("/auth/forgot-password")
 async def forgot_password(request: ForgotPasswordRequest):
