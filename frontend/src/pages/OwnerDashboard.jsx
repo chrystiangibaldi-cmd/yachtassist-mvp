@@ -188,13 +188,11 @@ const OwnerDashboard = () => {
                     <div key={idx}>• {item}</div>
                   ))}
                 </div>
-                <div className="mt-2 text-sm font-medium text-[#0A2342]">
-                  {ticket.quote_items && ticket.quote_items.length > 0 ? (
-                    <>Totale: €{ticket.final_price}</>
-                  ) : (
-                    <>Stima: €{ticket.price_min} — €{ticket.price_max}</>
-                  )}
-                </div>
+                {ticket.status !== 'aperto' && ticket.final_price != null && (
+                  <div className="mt-2 text-sm font-medium text-[#0A2342]">
+                    Totale: €{ticket.final_price}
+                  </div>
+                )}
               </div>
             ))}
           </div>
