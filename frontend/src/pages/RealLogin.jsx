@@ -137,7 +137,7 @@ const RealLogin = () => {
                 />
                 <span className="text-sm text-slate-600">Ricordami</span>
               </label>
-              <a href="#" className="text-sm text-[#1D9E75] hover:underline">
+              <a href="/forgot-password" className="text-sm text-[#1D9E75] hover:underline">
                 Password dimenticata?
               </a>
             </div>
