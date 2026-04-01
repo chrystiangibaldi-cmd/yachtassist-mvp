@@ -351,6 +351,14 @@ const handleAddAttachments = async (files) => {
               </tbody>
             </table>
           </div>
+        ) : (ticket.status === 'chiuso' || ticket.status === 'pagato') && ticket.final_price != null ? (
+          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6">
+            <h3 className="text-lg font-semibold text-[#0A2342] mb-4">Dettaglio preventivo</h3>
+            <div className="flex justify-between items-center py-3 border-b-2 border-[#0A2342]">
+              <span className="text-lg font-bold text-[#0A2342]">Importo concordato</span>
+              <span className="text-lg font-bold text-[#0A2342]">€{ticket.final_price}</span>
+            </div>
+          </div>
         ) : (
           <div className="bg-amber-50 border border-amber-200 rounded-lg shadow-sm p-6 mb-6">
             <h3 className="text-lg font-semibold text-[#0A2342] mb-2">Dettaglio preventivo</h3>
