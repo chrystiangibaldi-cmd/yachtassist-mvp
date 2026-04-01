@@ -49,12 +49,12 @@ async def health_check():
     return {"status": "healthy"}
 
 # Email helper function
-async def send_email_notification(to_email: str, subject: str, html_content: str):
+async def send_email_notification(to_email: str, subject: str, html_content: str, text_content: str = None):
     """Send email notification via Resend - non-blocking"""
     if not resend.api_key:
         logging.warning("RESEND_API_KEY not configured, skipping email")
         return None
-    
+
     try:
         params = {
             "from": SENDER_EMAIL,
@@ -62,6 +62,8 @@ async def send_email_notification(to_email: str, subject: str, html_content: str
             "subject": subject,
             "html": html_content
         }
+        if text_content:
+            params["text"] = text_content
         result = await asyncio.to_thread(resend.Emails.send, params)
         logging.info(f"Email sent to {to_email}: {result.get('id')}")
         return result
@@ -679,7 +681,14 @@ async def forgot_password(request: ForgotPasswordRequest):
         </div>
     </div>
     """
-    asyncio.create_task(send_email_notification(request.email, "Reset password - YachtAssist", reset_html))
+    reset_text = (
+        "Ciao,\n\n"
+        "Hai richiesto il reset della password per il tuo account YachtAssist.\n\n"
+        f"Clicca il link qui sotto per impostare una nuova password (scade tra 1 ora):\n\n"
+        f"{reset_link}\n\n"
+        "Se non hai richiesto il reset, ignora questa email."
+    )
+    asyncio.create_task(send_email_notification(request.email, "Reset password - YachtAssist", reset_html, reset_text))
     return {"success": True, "message": "Se l'email esiste riceverai un link di reset"}
 
 
