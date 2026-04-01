@@ -209,13 +209,23 @@ class ResetPasswordRequest(BaseModel):
 # Seed demo data
 async def seed_data(force_reset=False):
     if force_reset:
-        await db.users.delete_many({})
-        await db.yachts.delete_many({})
-        await db.checklist_items.delete_many({})
-        await db.technician_profiles.delete_many({})
-        await db.tickets.delete_many({})
-        await db.password_resets.delete_many({})
-        logger.info("Force reset: All collections cleared")
+        demo_emails = ["demo@owner.it", "demo@tecnico.it", "beta@yachtassist.it"]
+        demo_users = await db.users.find({"email": {"$in": demo_emails}}).to_list(None)
+        demo_user_ids = [u["id"] for u in demo_users]
+
+        if demo_user_ids:
+            demo_yachts = await db.yachts.find({"owner_id": {"$in": demo_user_ids}}).to_list(None)
+            demo_yacht_ids = [y["id"] for y in demo_yachts]
+
+            await db.tickets.delete_many({"owner_id": {"$in": demo_user_ids}})
+            if demo_yacht_ids:
+                await db.checklist_items.delete_many({"yacht_id": {"$in": demo_yacht_ids}})
+            await db.yachts.delete_many({"owner_id": {"$in": demo_user_ids}})
+            await db.technician_profiles.delete_many({"id": {"$in": demo_user_ids}})
+            await db.password_resets.delete_many({"email": {"$in": demo_emails}})
+            await db.users.delete_many({"email": {"$in": demo_emails}})
+
+        logger.info("Force reset: Demo data cleared (real data untouched)")
 
     demo_password = hash_password("Demo2026!")
     beta_password = hash_password("Beta2026!")
