@@ -667,7 +667,11 @@ async def forgot_password(request: ForgotPasswordRequest):
             <p style="color: #64748b;">Hai richiesto il reset della password per il tuo account YachtAssist.</p>
             <p style="color: #64748b;">Clicca il pulsante qui sotto per impostare una nuova password. Il link scade tra <strong>1 ora</strong>.</p>
             <div style="text-align: center; margin: 30px 0;">
-                <a href="{reset_link}" style="background: #1D9E75; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">
+                <a href="{reset_link}"
+                   style="background:#1D9E75;color:white;
+                   padding:14px 28px;border-radius:8px;
+                   text-decoration:none;font-weight:bold;
+                   font-size:16px;">
                     Reimposta Password
                 </a>
             </div>
