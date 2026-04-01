@@ -629,7 +629,7 @@ Rispondi esattamente con questo JSON:
         logger.error(f"AI diagnose error: {str(e)}")
         raise HTTPException(status_code=500, detail="Errore AI")
 
-@api_router.post("/reset-demo")
+@api_router.get("/reset-demo")
 async def reset_demo(secret: str = ""):
     if secret != os.environ.get("RESET_SECRET", "yachtassist-reset-2026"):
         raise HTTPException(status_code=403, detail="Non autorizzato")
