@@ -53,6 +53,7 @@ const ResetDemo = () => {
 function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const login = (userData, userToken) => {
     setUser(userData);
@@ -75,7 +76,12 @@ function App() {
       setUser(JSON.parse(savedUser));
       setToken(savedToken);
     }
+    setLoading(false);
   }, []);
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]" />;
+  }
 
   return (
     <UserContext.Provider value={{ user, token, login, logout }}>
