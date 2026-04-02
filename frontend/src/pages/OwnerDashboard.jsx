@@ -4,11 +4,25 @@ import axios from 'axios';
 import { API, UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, LogOut, FileText, Wrench, Calendar, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import { GoogleMap, useLoadScript, MarkerF } from '@react-google-maps/api';
+
+const libraries = ['places'];
+
+const mapContainerStyle = {
+  width: '100%',
+  height: '180px',
+  borderRadius: '0.5rem',
+};
 
 const OwnerDashboard = () => {
   const navigate = useNavigate();
   const { user, logout } = useContext(UserContext);
   const [dashboard, setDashboard] = useState(null);
+
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '',
+    libraries,
+  });
 
   useEffect(() => {
     fetchDashboard();
@@ -43,6 +57,10 @@ const OwnerDashboard = () => {
     };
     return badges[status] || status;
   };
+
+  const yachtCoords = dashboard.yacht.marina_lat && dashboard.yacht.marina_lng
+    ? { lat: dashboard.yacht.marina_lat, lng: dashboard.yacht.marina_lng }
+    : null;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -111,6 +129,23 @@ const OwnerDashboard = () => {
               <p className="text-sm text-slate-600 mt-2 font-medium">Conformità D.M. 133/2024</p>
             </div>
           </div>
+
+          {/* Mappa porto base */}
+          {isLoaded && yachtCoords && (
+            <div className="mt-4 rounded-lg overflow-hidden border border-slate-200">
+              <GoogleMap
+                mapContainerStyle={mapContainerStyle}
+                center={yachtCoords}
+                zoom={14}
+                options={{
+                  disableDefaultUI: true,
+                  zoomControl: true,
+                }}
+              >
+                <MarkerF position={yachtCoords} />
+              </GoogleMap>
+            </div>
+          )}
         </div>
 
         {/* Stats Cards */}
@@ -150,7 +185,7 @@ const OwnerDashboard = () => {
             <FileText className="w-5 h-5 mr-2" />
             Apri Checklist Pre-Stagione
           </Button>
-          
+
           <Button
             data-testid="request-intervention-button"
             onClick={() => navigate('/owner/request')}

@@ -87,6 +87,8 @@ class Yacht(BaseModel):
     model: str
     owner_id: str
     marina: str
+    marina_lat: Optional[float] = None
+    marina_lng: Optional[float] = None
     category: str
     distance: str
     compliance_score: int
@@ -747,6 +749,8 @@ class CreateYachtRequest(BaseModel):
     anno: Optional[str] = None
     lunghezza: Optional[str] = None
     marina: str
+    marina_lat: Optional[float] = None
+    marina_lng: Optional[float] = None
 
 @api_router.post("/yachts/create")
 async def create_yacht(request: CreateYachtRequest, user_id: str):
@@ -762,6 +766,8 @@ async def create_yacht(request: CreateYachtRequest, user_id: str):
         "model": request.modello,
         "owner_id": user_id,
         "marina": request.marina,
+        "marina_lat": request.marina_lat,
+        "marina_lng": request.marina_lng,
         "category": request.tipo.capitalize(),
         "distance": "",
         "compliance_score": 0,

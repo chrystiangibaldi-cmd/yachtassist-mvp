@@ -1,9 +1,82 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API, UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, Ship, AlertCircle, CheckCircle } from 'lucide-react';
+import { GoogleMap, useLoadScript, MarkerF } from '@react-google-maps/api';
+import usePlacesAutocomplete, { getGeocode, getLatLng } from 'use-places-autocomplete';
+
+const libraries = ['places'];
+
+const mapContainerStyle = {
+  width: '100%',
+  height: '200px',
+  borderRadius: '0.5rem',
+};
+
+const defaultCenter = { lat: 42.0, lng: 12.5 }; // Italy center
+
+const PlacesAutocomplete = ({ onSelect, value, onChange }) => {
+  const {
+    ready,
+    suggestions: { status, data },
+    setValue,
+    clearSuggestions,
+  } = usePlacesAutocomplete({
+    requestOptions: {
+      types: ['marina', 'harbor'],
+      componentRestrictions: { country: [] },
+    },
+    debounce: 300,
+  });
+
+  const handleInput = (e) => {
+    setValue(e.target.value);
+    onChange(e.target.value);
+  };
+
+  const handleSelect = async (description, placeId) => {
+    setValue(description, false);
+    clearSuggestions();
+    onChange(description);
+
+    try {
+      const results = await getGeocode({ placeId });
+      const { lat, lng } = getLatLng(results[0]);
+      onSelect({ name: description, lat, lng });
+    } catch (error) {
+      console.error('Error getting geocode:', error);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        value={value}
+        onChange={handleInput}
+        disabled={!ready}
+        placeholder="es. Marina di Portofino"
+        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
+        required
+      />
+      {status === 'OK' && (
+        <ul className="absolute z-50 w-full bg-white border border-slate-200 rounded-lg mt-1 shadow-lg max-h-60 overflow-y-auto">
+          {data.map(({ place_id, description }) => (
+            <li
+              key={place_id}
+              onClick={() => handleSelect(description, place_id)}
+              className="px-4 py-2 hover:bg-slate-50 cursor-pointer text-sm text-slate-700 border-b border-slate-100 last:border-b-0"
+            >
+              {description}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
 
 const OnboardingYacht = () => {
   const navigate = useNavigate();
@@ -18,11 +91,28 @@ const OnboardingYacht = () => {
     lunghezza: '',
     marina: ''
   });
+  const [portCoords, setPortCoords] = useState(null);
+
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '',
+    libraries,
+  });
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setError('');
   };
+
+  const handlePlaceSelect = useCallback(({ name, lat, lng }) => {
+    setFormData(prev => ({ ...prev, marina: name }));
+    setPortCoords({ lat, lng });
+    setError('');
+  }, []);
+
+  const handleMarinaTextChange = useCallback((value) => {
+    setFormData(prev => ({ ...prev, marina: value }));
+    setError('');
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,7 +122,14 @@ const OnboardingYacht = () => {
     }
     setLoading(true);
     try {
-      await axios.post(`${API}/yachts/create?user_id=${user.id}`, formData);
+      const payload = {
+        ...formData,
+        ...(portCoords && {
+          marina_lat: portCoords.lat,
+          marina_lng: portCoords.lng,
+        }),
+      };
+      await axios.post(`${API}/yachts/create?user_id=${user.id}`, payload);
       navigate('/owner/dashboard');
     } catch (err) {
       setError(err.response?.data?.detail || 'Errore durante il salvataggio');
@@ -185,19 +282,45 @@ const OnboardingYacht = () => {
               </div>
             </div>
 
-            {/* Porto base */}
+            {/* Porto base con Google Places Autocomplete */}
             <div>
               <label className="block text-sm font-medium text-[#0A2342] mb-1">Porto base *</label>
-              <input
-                type="text"
-                name="marina"
-                value={formData.marina}
-                onChange={handleChange}
-                placeholder="es. Marina di Pisa"
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
-                required
-              />
+              {isLoaded ? (
+                <PlacesAutocomplete
+                  value={formData.marina}
+                  onChange={handleMarinaTextChange}
+                  onSelect={handlePlaceSelect}
+                />
+              ) : (
+                <input
+                  type="text"
+                  name="marina"
+                  value={formData.marina}
+                  onChange={handleChange}
+                  placeholder="es. Marina di Portofino"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
+                  required
+                />
+              )}
             </div>
+
+            {/* Mappa porto selezionato */}
+            {isLoaded && portCoords && (
+              <div className="rounded-lg overflow-hidden border border-slate-200">
+                <GoogleMap
+                  mapContainerStyle={mapContainerStyle}
+                  center={portCoords}
+                  zoom={14}
+                  options={{
+                    disableDefaultUI: true,
+                    zoomControl: true,
+                  }}
+                >
+                  <MarkerF position={portCoords} />
+                </GoogleMap>
+              </div>
+            )}
+
             <div className="pt-2">
               <Button
                 type="submit"
