@@ -137,6 +137,8 @@ class Ticket(BaseModel):
     technician_payment: Optional[int] = None
     marina: str
     appointment: Optional[str] = None
+    appointment_lat: Optional[float] = None
+    appointment_lng: Optional[float] = None
     documents: List[str] = []
     quote_items: Optional[List[QuoteItem]] = None
     created_at: str
@@ -579,6 +581,25 @@ async def create_generic_ticket(request: CreateTicketRequest, user_id: str):
         asyncio.create_task(send_email_notification(user["email"], f"Ticket #{ticket_id} creato - YachtAssist", ticket_html))
     ticket_doc_clean = {k: v for k, v in ticket_doc.items()}
     return {"ticket": ticket_doc_clean, "success": True}
+
+class SetAppointmentRequest(BaseModel):
+    appointment: str
+    appointment_lat: Optional[float] = None
+    appointment_lng: Optional[float] = None
+
+@api_router.post("/tickets/{ticket_id}/appointment")
+async def set_appointment(ticket_id: str, request: SetAppointmentRequest):
+    update_fields = {"appointment": request.appointment}
+    if request.appointment_lat is not None and request.appointment_lng is not None:
+        update_fields["appointment_lat"] = request.appointment_lat
+        update_fields["appointment_lng"] = request.appointment_lng
+    result = await db.tickets.update_one(
+        {"id": ticket_id},
+        {"$set": update_fields}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return {"success": True}
 
 @api_router.post("/tickets/{ticket_id}/close")
 async def close_ticket(ticket_id: str, request: CloseTicketRequest):

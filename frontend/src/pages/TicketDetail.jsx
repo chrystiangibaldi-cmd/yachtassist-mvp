@@ -1,11 +1,20 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { API, UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
-import { Anchor, ArrowLeft, CheckCircle, FileText, Calendar, Star, Award, CreditCard, Lock, Upload, Paperclip } from 'lucide-react';
+import { Anchor, ArrowLeft, CheckCircle, FileText, Calendar, Star, Award, CreditCard, Lock, Upload, Paperclip, MapPin } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { GoogleMap, useLoadScript, MarkerF } from '@react-google-maps/api';
+
+const libraries = ['places'];
+
+const mapContainerStyle = {
+  width: '100%',
+  height: '180px',
+  borderRadius: '0.5rem',
+};
 
 const stripePromise = loadStripe('pk_test_51RtUo8Cq3C8e7g9xhNW8lANL74jpfwhANr6YDUwGfv96NzCoJwFYhwAXBOtot4rESSM4Mmhq4qlELP72FocRjs5K00tNGeqaBI');
 
@@ -134,6 +143,20 @@ const TicketDetail = () => {
   const [showPayment, setShowPayment] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [appointmentLocation, setAppointmentLocation] = useState('');
+  const [appointmentDate, setAppointmentDate] = useState('');
+  const [appointmentTime, setAppointmentTime] = useState('');
+  const [appointmentCoords, setAppointmentCoords] = useState(null);
+  const [savingAppointment, setSavingAppointment] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+  const locationDebounceRef = useRef(null);
+  const locationWrapperRef = useRef(null);
+
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '',
+    libraries,
+  });
   useEffect(() => {
     fetchData();
   }, [id]);
@@ -164,6 +187,90 @@ const TicketDetail = () => {
       }
     } catch (error) {
       console.error('Error fetching ticket:', error);
+    }
+  };
+
+  // Pre-fill appointment location and coords from yacht marina
+  useEffect(() => {
+    if (yacht?.marina && !appointmentLocation) {
+      setAppointmentLocation(yacht.marina);
+      if (yacht.marina_lat && yacht.marina_lng) {
+        setAppointmentCoords({ lat: yacht.marina_lat, lng: yacht.marina_lng });
+      }
+    }
+  }, [yacht]);
+
+  // Close location dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (locationWrapperRef.current && !locationWrapperRef.current.contains(e.target)) {
+        setShowLocationDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const fetchLocationSuggestions = useCallback(async (input) => {
+    if (!input || input.length < 2 || !window.google?.maps?.places?.AutocompleteSuggestion) {
+      setLocationSuggestions([]);
+      return;
+    }
+    try {
+      const { suggestions: results } = await google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+        input,
+        includedPrimaryTypes: ['marina'],
+      });
+      setLocationSuggestions(results || []);
+      setShowLocationDropdown((results || []).length > 0);
+    } catch (err) {
+      console.error('AutocompleteSuggestion error:', err);
+      setLocationSuggestions([]);
+    }
+  }, []);
+
+  const handleLocationInput = (e) => {
+    const val = e.target.value;
+    setAppointmentLocation(val);
+    setAppointmentCoords(null);
+    clearTimeout(locationDebounceRef.current);
+    locationDebounceRef.current = setTimeout(() => fetchLocationSuggestions(val), 300);
+  };
+
+  const handleLocationSelect = async (suggestion) => {
+    const text = suggestion.placePrediction.text.text;
+    setAppointmentLocation(text);
+    setLocationSuggestions([]);
+    setShowLocationDropdown(false);
+    try {
+      const place = suggestion.placePrediction.toPlace();
+      await place.fetchFields({ fields: ['location'] });
+      const loc = place.location;
+      setAppointmentCoords({ lat: loc.lat(), lng: loc.lng() });
+    } catch (err) {
+      console.error('Error fetching place location:', err);
+    }
+  };
+
+  const handleSaveAppointment = async () => {
+    if (!appointmentDate || !appointmentTime || !appointmentLocation) return;
+    setSavingAppointment(true);
+    try {
+      const dateObj = new Date(appointmentDate);
+      const days = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+      const months = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+      const formatted = `${days[dateObj.getUTCDay()]} ${dateObj.getUTCDate()} ${months[dateObj.getUTCMonth()]} · ${appointmentTime} · ${appointmentLocation}`;
+      const payload = { appointment: formatted };
+      if (appointmentCoords) {
+        payload.appointment_lat = appointmentCoords.lat;
+        payload.appointment_lng = appointmentCoords.lng;
+      }
+      await axios.post(`${API}/tickets/${id}/appointment`, payload);
+      await fetchData();
+    } catch (err) {
+      console.error('Error saving appointment:', err);
+    } finally {
+      setSavingAppointment(false);
     }
   };
 
@@ -276,6 +383,32 @@ const handleAddAttachments = async (files) => {
             ))}
           </div>
         </div>
+
+        {/* Porto base */}
+        {yacht.marina && (
+          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6">
+            <h3 className="text-lg font-semibold text-[#0A2342] mb-4 flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-[#1D9E75]" />
+              Porto base
+            </h3>
+            <p className="text-slate-700 font-medium mb-3">{yacht.marina}</p>
+            {isLoaded && yacht.marina_lat && yacht.marina_lng && (
+              <div className="rounded-lg overflow-hidden border border-slate-200">
+                <GoogleMap
+                  mapContainerStyle={mapContainerStyle}
+                  center={{ lat: yacht.marina_lat, lng: yacht.marina_lng }}
+                  zoom={14}
+                  options={{
+                    disableDefaultUI: true,
+                    zoomControl: true,
+                  }}
+                >
+                  <MarkerF position={{ lat: yacht.marina_lat, lng: yacht.marina_lng }} />
+                </GoogleMap>
+              </div>
+            )}
+          </div>
+        )}
 
         {ticket.technician_id && technician && (
           <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6">
@@ -478,6 +611,85 @@ const handleAddAttachments = async (files) => {
             <CreditCard className="w-5 h-5 mr-2" />
             Paga e Chiudi Ticket · €{ticket.final_price}
           </Button>
+        )}
+
+        {ticket.status === 'assegnato' && user.role === 'technician' && !ticket.appointment && (
+          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6">
+            <h3 className="text-lg font-semibold text-[#0A2342] mb-4 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-[#1D9E75]" />
+              Imposta appuntamento
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-[#0A2342] mb-1">Luogo intervento</label>
+                <div className="relative" ref={locationWrapperRef}>
+                  <input
+                    type="text"
+                    value={appointmentLocation}
+                    onChange={handleLocationInput}
+                    onFocus={() => locationSuggestions.length > 0 && setShowLocationDropdown(true)}
+                    placeholder="es. Marina di Pisa pontile B"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
+                  />
+                  {showLocationDropdown && locationSuggestions.length > 0 && (
+                    <ul className="absolute z-50 w-full bg-white border border-slate-200 rounded-lg mt-1 shadow-lg max-h-60 overflow-y-auto">
+                      {locationSuggestions.map((s, i) => (
+                        <li
+                          key={s.placePrediction.placeId || i}
+                          onClick={() => handleLocationSelect(s)}
+                          className="px-4 py-2 hover:bg-slate-50 cursor-pointer text-sm text-slate-700 border-b border-slate-100 last:border-b-0"
+                        >
+                          {s.placePrediction.text.text}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+              {isLoaded && appointmentCoords && (
+                <div className="rounded-lg overflow-hidden border border-slate-200">
+                  <GoogleMap
+                    mapContainerStyle={mapContainerStyle}
+                    center={appointmentCoords}
+                    zoom={14}
+                    options={{
+                      disableDefaultUI: true,
+                      zoomControl: true,
+                    }}
+                  >
+                    <MarkerF position={appointmentCoords} />
+                  </GoogleMap>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-[#0A2342] mb-1">Data</label>
+                  <input
+                    type="date"
+                    value={appointmentDate}
+                    onChange={(e) => setAppointmentDate(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#0A2342] mb-1">Orario</label>
+                  <input
+                    type="time"
+                    value={appointmentTime}
+                    onChange={(e) => setAppointmentTime(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
+                  />
+                </div>
+              </div>
+              <Button
+                onClick={handleSaveAppointment}
+                disabled={savingAppointment || !appointmentDate || !appointmentTime || !appointmentLocation}
+                className="w-full bg-[#0A2342] hover:bg-[#0A2342]/90 text-white font-medium"
+              >
+                {savingAppointment ? 'Salvataggio...' : 'Conferma appuntamento'}
+              </Button>
+            </div>
+          </div>
         )}
 
         {ticket.status === 'assegnato' && user.role === 'technician' && (

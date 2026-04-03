@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:ample-exploration-production-0c33.up.railway.app)",
+      "Bash(yarn build:*)",
+      "Bash(npx craco:*)",
+      "Bash(ls C:/Users/Chrystian/yachtassist-mvp/frontend/node_modules/.bin/craco*)",
+      "Bash(npx react-scripts:*)",
+      "Bash(rm -rf node_modules)",
+      "Bash(corepack enable:*)",
+      "Bash(corepack yarn:*)",
+      "Bash(npx yarn:*)"
+    ]
+  }
+}
