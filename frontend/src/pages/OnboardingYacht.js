@@ -1,11 +1,10 @@
-import React, { useState, useContext, useCallback } from 'react';
+import React, { useState, useContext, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API, UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, Ship, AlertCircle, CheckCircle } from 'lucide-react';
 import { GoogleMap, useLoadScript, MarkerF } from '@react-google-maps/api';
-import usePlacesAutocomplete, { getGeocode, getLatLng } from 'use-places-autocomplete';
 
 const libraries = ['places'];
 
@@ -15,61 +14,83 @@ const mapContainerStyle = {
   borderRadius: '0.5rem',
 };
 
-const defaultCenter = { lat: 42.0, lng: 12.5 }; // Italy center
-
 const PlacesAutocomplete = ({ onSelect, value, onChange }) => {
-  const {
-    ready,
-    suggestions: { status, data },
-    setValue,
-    clearSuggestions,
-  } = usePlacesAutocomplete({
-    requestOptions: {
-      types: ['marina', 'harbor'],
-      componentRestrictions: { country: [] },
-    },
-    debounce: 300,
-  });
+  const [suggestions, setSuggestions] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const debounceRef = useRef(null);
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const fetchSuggestions = useCallback(async (input) => {
+    if (!input || input.length < 2 || !window.google?.maps?.places?.AutocompleteSuggestion) {
+      setSuggestions([]);
+      return;
+    }
+    try {
+      const { suggestions: results } = await google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+        input,
+        includedPrimaryTypes: ['marina', 'harbor', 'port'],
+      });
+      setSuggestions(results || []);
+      setShowDropdown((results || []).length > 0);
+    } catch (err) {
+      console.error('AutocompleteSuggestion error:', err);
+      setSuggestions([]);
+    }
+  }, []);
 
   const handleInput = (e) => {
-    setValue(e.target.value);
-    onChange(e.target.value);
+    const val = e.target.value;
+    onChange(val);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchSuggestions(val), 300);
   };
 
-  const handleSelect = async (description, placeId) => {
-    setValue(description, false);
-    clearSuggestions();
-    onChange(description);
+  const handleSelect = async (suggestion) => {
+    const text = suggestion.placePrediction.text.text;
+    onChange(text);
+    setSuggestions([]);
+    setShowDropdown(false);
 
     try {
-      const results = await getGeocode({ placeId });
-      const { lat, lng } = getLatLng(results[0]);
-      onSelect({ name: description, lat, lng });
-    } catch (error) {
-      console.error('Error getting geocode:', error);
+      const place = suggestion.placePrediction.toPlace();
+      await place.fetchFields({ fields: ['location'] });
+      const loc = place.location;
+      onSelect({ name: text, lat: loc.lat(), lng: loc.lng() });
+    } catch (err) {
+      console.error('Error fetching place location:', err);
     }
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={wrapperRef}>
       <input
         type="text"
         value={value}
         onChange={handleInput}
-        disabled={!ready}
+        onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
         placeholder="es. Marina di Portofino"
         className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
         required
       />
-      {status === 'OK' && (
+      {showDropdown && suggestions.length > 0 && (
         <ul className="absolute z-50 w-full bg-white border border-slate-200 rounded-lg mt-1 shadow-lg max-h-60 overflow-y-auto">
-          {data.map(({ place_id, description }) => (
+          {suggestions.map((s, i) => (
             <li
-              key={place_id}
-              onClick={() => handleSelect(description, place_id)}
+              key={s.placePrediction.placeId || i}
+              onClick={() => handleSelect(s)}
               className="px-4 py-2 hover:bg-slate-50 cursor-pointer text-sm text-slate-700 border-b border-slate-100 last:border-b-0"
             >
-              {description}
+              {s.placePrediction.text.text}
             </li>
           ))}
         </ul>
@@ -285,23 +306,11 @@ const OnboardingYacht = () => {
             {/* Porto base con Google Places Autocomplete */}
             <div>
               <label className="block text-sm font-medium text-[#0A2342] mb-1">Porto base *</label>
-              {isLoaded ? (
-                <PlacesAutocomplete
-                  value={formData.marina}
-                  onChange={handleMarinaTextChange}
-                  onSelect={handlePlaceSelect}
-                />
-              ) : (
-                <input
-                  type="text"
-                  name="marina"
-                  value={formData.marina}
-                  onChange={handleChange}
-                  placeholder="es. Marina di Portofino"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
-                  required
-                />
-              )}
+              <PlacesAutocomplete
+                value={formData.marina}
+                onChange={handleMarinaTextChange}
+                onSelect={handlePlaceSelect}
+              />
             </div>
 
             {/* Mappa porto selezionato */}
