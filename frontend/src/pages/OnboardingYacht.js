@@ -38,7 +38,7 @@ const PlacesAutocomplete = ({ onSelect, value, onChange }) => {
     try {
       const { suggestions: results } = await google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
         input,
-        includedPrimaryTypes: ['marina', 'harbor', 'port'],
+        includedPrimaryTypes: ['marina'],
       });
       setSuggestions(results || []);
       setShowDropdown((results || []).length > 0);
