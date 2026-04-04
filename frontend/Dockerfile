@@ -4,7 +4,7 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 # Cache bust to force fresh build
-ARG CACHE_BUST=20260331v4
+ARG CACHE_BUST=20260404v1
 RUN echo "Cache bust: $CACHE_BUST"
 
 COPY package.json ./
