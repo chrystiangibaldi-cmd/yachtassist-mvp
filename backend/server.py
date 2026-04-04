@@ -489,8 +489,8 @@ async def get_technician_dashboard(user_id: str = "tech-1"):
         if not user:
             raise HTTPException(status_code=404, detail=f"User {user_id} not found")
         tickets = await db.tickets.find({"technician_id": user_id}, {"_id": 0}).to_list(10)
-        total_earnings = sum([t.get("technician_payment", 0) for t in tickets if t["status"] == "chiuso"])
-        pending_earnings = sum([t.get("technician_payment", 0) for t in tickets if t["status"] in ["assegnato", "accettato", "eseguito"]])
+        total_earnings = sum([(t.get("technician_payment") or 0) for t in tickets if t["status"] == "chiuso"])
+        pending_earnings = sum([(t.get("technician_payment") or 0) for t in tickets if t["status"] in ["assegnato", "accettato", "eseguito"]])
         return TechnicianDashboard(
             user=User(**user), assigned_tickets=[Ticket(**t) for t in tickets],
             total_earnings=total_earnings, pending_earnings=pending_earnings
