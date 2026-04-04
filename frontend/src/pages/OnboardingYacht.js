@@ -1,10 +1,12 @@
 import React, { useState, useContext, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { API, UserContext } from '@/App';
+import { UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, Ship, AlertCircle, CheckCircle } from 'lucide-react';
 import { GoogleMap, useLoadScript, MarkerF } from '@react-google-maps/api';
+
+const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
 const libraries = ['places'];
 
@@ -150,7 +152,7 @@ const OnboardingYacht = () => {
           marina_lng: portCoords.lng,
         }),
       };
-      await axios.post(`${API}/yachts/create?user_id=${user.id}`, payload);
+      await axios.post(`${BACKEND}/yachts/create?user_id=${user.id}`, payload);
       navigate('/owner/dashboard');
     } catch (err) {
       setError(err.response?.data?.detail || 'Errore durante il salvataggio');

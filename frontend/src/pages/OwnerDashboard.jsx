@@ -1,10 +1,12 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { API, UserContext } from '@/App';
+import { UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, LogOut, FileText, Wrench, Calendar, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import { GoogleMap, useLoadScript, MarkerF } from '@react-google-maps/api';
+
+const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
 const libraries = ['places'];
 
@@ -30,7 +32,7 @@ const OwnerDashboard = () => {
 
   const fetchDashboard = async () => {
     try {
-      const response = await axios.get(`${API}/dashboard/owner?user_id=${user.id}`);
+      const response = await axios.get(`${BACKEND}/dashboard/owner?user_id=${user.id}`);
       setDashboard(response.data);
     } catch (error) {
       console.error('Error fetching dashboard:', error);

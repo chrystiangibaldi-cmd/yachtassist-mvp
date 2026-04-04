@@ -1,9 +1,11 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { API, UserContext } from '@/App';
+import { UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, User, Wrench, AlertCircle } from 'lucide-react';
+
+const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -71,7 +73,7 @@ const Register = () => {
         })
       };
       
-      const response = await axios.post(`${API}/auth/register`, payload);
+      const response = await axios.post(`${BACKEND}/auth/register`, payload);
       const { user, token } = response.data;
       
       // Store auth data
@@ -92,7 +94,7 @@ const Register = () => {
 
   const handleDemoLogin = async (role) => {
     try {
-      const response = await axios.post(`${API}/auth/demo-login`, { role });
+      const response = await axios.post(`${BACKEND}/auth/demo-login`, { role });
       const { user, token } = response.data;
       login(user, token);
       

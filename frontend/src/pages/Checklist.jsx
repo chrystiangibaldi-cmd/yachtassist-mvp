@@ -1,9 +1,11 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { API, UserContext } from '@/App';
+import { UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, ArrowLeft, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+
+const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
 const Checklist = () => {
   const navigate = useNavigate();
@@ -17,11 +19,11 @@ const Checklist = () => {
 
   const fetchData = async () => {
     try {
-      const dashboardRes = await axios.get(`${API}/dashboard/owner?user_id=${user.id}`);
+      const dashboardRes = await axios.get(`${BACKEND}/dashboard/owner?user_id=${user.id}`);
       const yachtData = dashboardRes.data.yacht;
       setYacht(yachtData);
       
-      const checklistRes = await axios.get(`${API}/checklist/${yachtData.id}`);
+      const checklistRes = await axios.get(`${BACKEND}/checklist/${yachtData.id}`);
       setItems(checklistRes.data);
     } catch (error) {
       console.error('Error fetching checklist:', error);

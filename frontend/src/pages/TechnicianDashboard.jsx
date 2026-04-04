@@ -1,9 +1,11 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { API, UserContext } from '@/App';
+import { UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, LogOut, FileText, Euro, CheckCircle } from 'lucide-react';
+
+const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
 const TechnicianDashboard = () => {
   const navigate = useNavigate();
@@ -16,7 +18,7 @@ const TechnicianDashboard = () => {
 
   const fetchDashboard = async () => {
     try {
-      const response = await axios.get(`${API}/dashboard/technician?user_id=${user.id}`);
+      const response = await axios.get(`${BACKEND}/dashboard/technician?user_id=${user.id}`);
       setDashboard(response.data);
     } catch (error) {
       console.error('Error fetching dashboard:', error);

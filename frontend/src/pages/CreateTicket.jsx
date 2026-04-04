@@ -1,9 +1,11 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { API, UserContext } from '@/App';
+import { UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, ArrowLeft, MapPin, Star, Award } from 'lucide-react';
+
+const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
 const CreateTicket = () => {
   const navigate = useNavigate();
@@ -18,7 +20,7 @@ const CreateTicket = () => {
 
   const fetchData = async () => {
     try {
-      const dashboardRes = await axios.get(`${API}/dashboard/owner?user_id=${user.id}`);
+      const dashboardRes = await axios.get(`${BACKEND}/dashboard/owner?user_id=${user.id}`);
       const yachtData = dashboardRes.data.yacht;
       setYacht(yachtData);
 
@@ -34,7 +36,7 @@ const CreateTicket = () => {
       
       setTicket(openTicket);
 
-      const techRes = await axios.get(`${API}/technicians/available`);
+      const techRes = await axios.get(`${BACKEND}/technicians/available`);
       setTechnicians(techRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -42,7 +44,7 @@ const CreateTicket = () => {
   };
   const handleAssign = async (technicianId) => {
     try {
-      await axios.post(`${API}/tickets/${ticket.id}/assign`, { technician_id: technicianId });
+      await axios.post(`${BACKEND}/tickets/${ticket.id}/assign`, { technician_id: technicianId });
       navigate(`/owner/ticket/${ticket.id}`);
     } catch (error) {
       console.error('Error assigning technician:', error);

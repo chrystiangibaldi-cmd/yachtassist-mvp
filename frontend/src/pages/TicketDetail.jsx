@@ -1,12 +1,14 @@
 import React, { useContext, useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { API, UserContext } from '@/App';
+import { UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, ArrowLeft, CheckCircle, FileText, Calendar, Star, Award, CreditCard, Lock, Upload, Paperclip, MapPin } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { GoogleMap, useLoadScript, MarkerF } from '@react-google-maps/api';
+
+const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
 const libraries = ['places'];
 
@@ -30,7 +32,7 @@ const PaymentForm = ({ ticket, onSuccess, onCancel }) => {
     const createIntent = async () => {
       try {
         const res = await axios.post(
-          `${API}/payments/create-intent?ticket_id=${ticket.id}`
+          `${BACKEND}/payments/create-intent?ticket_id=${ticket.id}`
         );
         setClientSecret(res.data.client_secret);
         setPaymentData(res.data);
@@ -163,25 +165,25 @@ const TicketDetail = () => {
 
   const fetchData = async () => {
     try {
-      const ticketRes = await axios.get(`${API}/tickets/${id}`);
+      const ticketRes = await axios.get(`${BACKEND}/tickets/${id}`);
       const ticketData = ticketRes.data;
       setTicket(ticketData);
 
       if (ticketData.yacht_id && ticketData.yacht_id !== 'pending') {
         try {
-          const yachtRes = await axios.get(`${API}/yachts/${ticketData.yacht_id}`);
+          const yachtRes = await axios.get(`${BACKEND}/yachts/${ticketData.yacht_id}`);
           setYacht(yachtRes.data);
         } catch {
-          const dashboardRes = await axios.get(`${API}/dashboard/owner?user_id=${ticketData.owner_id}`);
+          const dashboardRes = await axios.get(`${BACKEND}/dashboard/owner?user_id=${ticketData.owner_id}`);
           setYacht(dashboardRes.data.yacht);
         }
       } else {
-        const dashboardRes = await axios.get(`${API}/dashboard/owner?user_id=${ticketData.owner_id}`);
+        const dashboardRes = await axios.get(`${BACKEND}/dashboard/owner?user_id=${ticketData.owner_id}`);
         setYacht(dashboardRes.data.yacht);
       }
 
       if (ticketData.technician_id) {
-        const techsRes = await axios.get(`${API}/technicians/available`);
+        const techsRes = await axios.get(`${BACKEND}/technicians/available`);
         const tech = techsRes.data.find(t => t.id === ticketData.technician_id);
         setTechnician(tech);
       }
@@ -265,7 +267,7 @@ const TicketDetail = () => {
         payload.appointment_lat = appointmentCoords.lat;
         payload.appointment_lng = appointmentCoords.lng;
       }
-      await axios.post(`${API}/tickets/${id}/appointment`, payload);
+      await axios.post(`${BACKEND}/tickets/${id}/appointment`, payload);
       await fetchData();
     } catch (err) {
       console.error('Error saving appointment:', err);
@@ -299,7 +301,7 @@ const handleAddAttachments = async (files) => {
         reader.onload = () => resolve({ name: file.name, type: file.type, data: reader.result });
         reader.readAsDataURL(file);
       })));
-      await axios.post(`${API}/tickets/${id}/add-photos`, {
+      await axios.post(`${BACKEND}/tickets/${id}/add-photos`, {
         photos: base64files
       });
       await fetchData();
@@ -311,7 +313,7 @@ const handleAddAttachments = async (files) => {
   };
   const handleCloseTechnician = async () => {
     try {
-      await axios.post(`${API}/tickets/${id}/close`, {
+      await axios.post(`${BACKEND}/tickets/${id}/close`, {
         documents: ['Fattura.pdf', 'Foto_intervento.jpg', 'Cert_omologazione.pdf']
       });
       await fetchData();

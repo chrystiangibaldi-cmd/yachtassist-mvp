@@ -2,11 +2,11 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { API, UserContext } from '@/App';
+import { UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, ArrowLeft, ArrowRight, CheckCircle, Upload, MapPin, Star, AlertCircle, Sparkles } from 'lucide-react';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://yachtassist-mvp-production.up.railway.app';
+const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
 const RequestIntervention = () => {
   const navigate = useNavigate();
@@ -62,8 +62,8 @@ const RequestIntervention = () => {
     try {
       const categoryId = categories.find(c => c.name === formData.category)?.id;
       const url = categoryId
-        ? `${API}/technicians/available?category=${categoryId}`
-        : `${API}/technicians/available`;
+        ? `${BACKEND}/technicians/available?category=${categoryId}`
+        : `${BACKEND}/technicians/available`;
       const response = await axios.get(url);
       setTechnicians(response.data);
     } catch (err) {
@@ -102,7 +102,7 @@ const handleSubcategoryConfirm = () => {
     setAiLoading(true);
     setAiResult(null);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/ai/diagnose`, {
+      const response = await fetch(`${BACKEND}/ai/diagnose`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -143,7 +143,7 @@ const handleSubcategoryConfirm = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.post(`${API}/tickets/create?user_id=${user.id}`, {
+      const response = await axios.post(`${BACKEND}/tickets/create?user_id=${user.id}`, {
         category: formData.category,
         description: formData.description,
         urgency: formData.urgency,
@@ -152,7 +152,7 @@ const handleSubcategoryConfirm = () => {
       });
       const ticket = response.data.ticket;
       if (formData.selectedTechnician) {
-        await axios.post(`${API}/tickets/${ticket.id}/assign`, {
+        await axios.post(`${BACKEND}/tickets/${ticket.id}/assign`, {
           technician_id: formData.selectedTechnician
         });
       }

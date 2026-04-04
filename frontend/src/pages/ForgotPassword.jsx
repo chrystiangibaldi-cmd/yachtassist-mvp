@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { API } from '@/App';
 import { Anchor, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -17,7 +18,7 @@ const ForgotPassword = () => {
     setLoading(true);
     setError('');
     try {
-      await axios.post(`${API}/auth/forgot-password`, { email });
+      await axios.post(`${BACKEND}/auth/forgot-password`, { email });
       setSuccess(true);
     } catch (err) {
       setError('Errore durante l\'invio. Riprova.');

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import axios from 'axios';
-import { API } from '@/App';
 import { Anchor, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -26,7 +27,7 @@ const ResetPassword = () => {
     setLoading(true);
     setError('');
     try {
-      await axios.post(`${API}/auth/reset-password`, { token, new_password: password });
+      await axios.post(`${BACKEND}/auth/reset-password`, { token, new_password: password });
       setSuccess(true);
       setTimeout(() => navigate('/login'), 3000);
     } catch (err) {

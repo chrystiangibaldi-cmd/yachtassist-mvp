@@ -1,9 +1,11 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { API, UserContext } from '@/App';
+import { UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, User, Wrench, AlertCircle } from 'lucide-react';
+
+const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
 const RealLogin = () => {
   const navigate = useNavigate();
@@ -36,7 +38,7 @@ const RealLogin = () => {
     setLoading(true);
     
     try {
-      const response = await axios.post(`${API}/auth/login`, {
+      const response = await axios.post(`${BACKEND}/auth/login`, {
         email: formData.email,
         password: formData.password
       });
@@ -61,7 +63,7 @@ const RealLogin = () => {
 
   const handleDemoLogin = async (role) => {
     try {
-      const response = await axios.post(`${API}/auth/demo-login`, { role });
+      const response = await axios.post(`${BACKEND}/auth/demo-login`, { role });
       const { user, token } = response.data;
       login(user, token);
       
