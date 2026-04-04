@@ -169,7 +169,9 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     role: Literal["owner", "technician"]
+    specializzazione: Optional[List[str]] = None
     specializzazioni: Optional[List[str]] = None  # array categorie selezionate
+    specializations: Optional[List[str]] = None
     porto_base: Optional[str] = None
     telefono: Optional[str] = None
 
@@ -410,14 +412,14 @@ async def register(request: RegisterRequest):
     }
     if request.role == "technician":
         user_doc.update({
-            "specializzazione": request.specializzazione,
+            "specializzazione": request.specializzazione or request.specializzazioni or request.specializations or [],
             "porto_base": request.porto_base,
             "telefono": request.telefono
         })
     await db.users.insert_one(user_doc)
     # Se tecnico, crea profilo per il matching
     if request.role == "technician":
-        specializzazioni = request.specializzazioni or []
+        specializzazioni = request.specializzazione or request.specializzazioni or request.specializations or []
         tech_profile = {
             "id": user_id,
             "name": f"{request.nome} {request.cognome}",
