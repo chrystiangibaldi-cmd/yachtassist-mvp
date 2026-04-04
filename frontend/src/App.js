@@ -15,7 +15,7 @@ import OnboardingYacht from '@/pages/OnboardingYacht';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://yachtassist-mvp-production.up.railway.app';
 export const API = `${BACKEND_URL}/api`;
 
 export const UserContext = React.createContext();

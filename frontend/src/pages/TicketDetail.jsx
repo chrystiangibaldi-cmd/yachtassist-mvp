@@ -30,7 +30,7 @@ const PaymentForm = ({ ticket, onSuccess, onCancel }) => {
     const createIntent = async () => {
       try {
         const res = await axios.post(
-          `${process.env.REACT_APP_BACKEND_URL}/payments/create-intent?ticket_id=${ticket.id}`
+          `${API}/payments/create-intent?ticket_id=${ticket.id}`
         );
         setClientSecret(res.data.client_secret);
         setPaymentData(res.data);

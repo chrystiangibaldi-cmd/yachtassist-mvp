@@ -6,7 +6,7 @@ import { API, UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, ArrowLeft, ArrowRight, CheckCircle, Upload, MapPin, Star, AlertCircle, Sparkles } from 'lucide-react';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://yachtassist-mvp-production.up.railway.app';
 
 const RequestIntervention = () => {
   const navigate = useNavigate();
