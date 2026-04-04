@@ -484,14 +484,24 @@ async def get_owner_dashboard(user_id: str = "owner-1"):
 
 @api_router.get("/dashboard/technician", response_model=TechnicianDashboard)
 async def get_technician_dashboard(user_id: str = "tech-1"):
-    user = await db.users.find_one({"id": user_id}, {"_id": 0})
-    tickets = await db.tickets.find({"technician_id": user_id}, {"_id": 0}).to_list(10)
-    total_earnings = sum([t.get("technician_payment", 0) for t in tickets if t["status"] == "chiuso"])
-    pending_earnings = sum([t.get("technician_payment", 0) for t in tickets if t["status"] in ["assegnato", "accettato", "eseguito"]])
-    return TechnicianDashboard(
-        user=User(**user), assigned_tickets=[Ticket(**t) for t in tickets],
-        total_earnings=total_earnings, pending_earnings=pending_earnings
-    )
+    try:
+        user = await db.users.find_one({"id": user_id}, {"_id": 0})
+        if not user:
+            raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+        tickets = await db.tickets.find({"technician_id": user_id}, {"_id": 0}).to_list(10)
+        total_earnings = sum([t.get("technician_payment", 0) for t in tickets if t["status"] == "chiuso"])
+        pending_earnings = sum([t.get("technician_payment", 0) for t in tickets if t["status"] in ["assegnato", "accettato", "eseguito"]])
+        return TechnicianDashboard(
+            user=User(**user), assigned_tickets=[Ticket(**t) for t in tickets],
+            total_earnings=total_earnings, pending_earnings=pending_earnings
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"[ERROR] /dashboard/technician?user_id={user_id}: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/checklist/{yacht_id}", response_model=List[ChecklistItem])
 async def get_checklist(yacht_id: str):
