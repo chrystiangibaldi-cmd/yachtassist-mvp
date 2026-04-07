@@ -1,11 +1,105 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, User, Wrench, AlertCircle } from 'lucide-react';
+import { GoogleMap, useLoadScript, MarkerF } from '@react-google-maps/api';
 
 const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
+
+const libraries = ['places'];
+
+const mapContainerStyle = {
+  width: '100%',
+  height: '200px',
+  borderRadius: '0.5rem',
+};
+
+const PlacesAutocomplete = ({ onSelect, value, onChange }) => {
+  const [suggestions, setSuggestions] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const debounceRef = useRef(null);
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const fetchSuggestions = useCallback(async (input) => {
+    if (!input || input.length < 2 || !window.google?.maps?.places?.AutocompleteSuggestion) {
+      setSuggestions([]);
+      return;
+    }
+    try {
+      const { suggestions: results } = await google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+        input,
+        includedPrimaryTypes: ['marina'],
+      });
+      setSuggestions(results || []);
+      setShowDropdown((results || []).length > 0);
+    } catch (err) {
+      console.error('AutocompleteSuggestion error:', err);
+      setSuggestions([]);
+    }
+  }, []);
+
+  const handleInput = (e) => {
+    const val = e.target.value;
+    onChange(val);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchSuggestions(val), 300);
+  };
+
+  const handleSelect = async (suggestion) => {
+    const text = suggestion.placePrediction.text.text;
+    onChange(text);
+    setSuggestions([]);
+    setShowDropdown(false);
+
+    try {
+      const place = suggestion.placePrediction.toPlace();
+      await place.fetchFields({ fields: ['location'] });
+      const loc = place.location;
+      onSelect({ name: text, lat: loc.lat(), lng: loc.lng() });
+    } catch (err) {
+      console.error('Error fetching place location:', err);
+    }
+  };
+
+  return (
+    <div className="relative" ref={wrapperRef}>
+      <input
+        type="text"
+        value={value}
+        onChange={handleInput}
+        onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
+        placeholder="es. Marina di Pisa"
+        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1D9E75] focus:border-transparent"
+        required
+      />
+      {showDropdown && suggestions.length > 0 && (
+        <ul className="absolute z-50 w-full bg-white border border-slate-200 rounded-lg mt-1 shadow-lg max-h-60 overflow-y-auto">
+          {suggestions.map((s, i) => (
+            <li
+              key={s.placePrediction.placeId || i}
+              onClick={() => handleSelect(s)}
+              className="px-4 py-2 hover:bg-slate-50 cursor-pointer text-sm text-slate-700 border-b border-slate-100 last:border-b-0"
+            >
+              {s.placePrediction.text.text}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
 
 const Register = () => {
   const navigate = useNavigate();
@@ -25,7 +119,24 @@ const Register = () => {
   
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [portCoords, setPortCoords] = useState(null);
 
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '',
+    libraries,
+  });
+
+  const handlePlaceSelect = useCallback(({ name, lat, lng }) => {
+    setFormData(prev => ({ ...prev, porto_base: name }));
+    setPortCoords({ lat, lng });
+    setError('');
+  }, []);
+
+  const handlePortoBaseTextChange = useCallback((value) => {
+    setFormData(prev => ({ ...prev, porto_base: value }));
+    setPortCoords(null);
+    setError('');
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -69,7 +180,11 @@ const Register = () => {
         ...(formData.role === 'technician' && {
           specializzazioni: formData.specializzazioni,
           porto_base: formData.porto_base,
-          telefono: formData.telefono
+          telefono: formData.telefono,
+          ...(portCoords && {
+            marina_lat: portCoords.lat,
+            marina_lng: portCoords.lng,
+          })
         })
       };
       
@@ -286,15 +401,23 @@ const Register = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-[#0A2342] mb-1">Porto base *</label>
-                    <input
-                      type="text"
-                      name="porto_base"
-                      value={formData.porto_base}
-                      onChange={handleChange}
-                      placeholder="es. Marina di Pisa"
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1D9E75] focus:border-transparent"
-                      required
-                    />
+                    {isLoaded ? (
+                      <PlacesAutocomplete
+                        value={formData.porto_base}
+                        onChange={handlePortoBaseTextChange}
+                        onSelect={handlePlaceSelect}
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        name="porto_base"
+                        value={formData.porto_base}
+                        onChange={handleChange}
+                        placeholder="es. Marina di Pisa"
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1D9E75] focus:border-transparent"
+                        required
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-[#0A2342] mb-1">Telefono *</label>
@@ -309,6 +432,21 @@ const Register = () => {
                     />
                   </div>
                 </div>
+                {isLoaded && portCoords && (
+                  <div className="rounded-lg overflow-hidden border border-slate-200">
+                    <GoogleMap
+                      mapContainerStyle={mapContainerStyle}
+                      center={portCoords}
+                      zoom={14}
+                      options={{
+                        disableDefaultUI: true,
+                        zoomControl: true,
+                      }}
+                    >
+                      <MarkerF position={portCoords} />
+                    </GoogleMap>
+                  </div>
+                )}
               </>
             )}
 

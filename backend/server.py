@@ -174,6 +174,8 @@ class RegisterRequest(BaseModel):
     specializations: Optional[List[str]] = None
     porto_base: Optional[str] = None
     telefono: Optional[str] = None
+    marina_lat: Optional[float] = None
+    marina_lng: Optional[float] = None
 
 class LoginResponse(BaseModel):
     user: User
@@ -414,7 +416,9 @@ async def register(request: RegisterRequest):
         user_doc.update({
             "specializzazione": request.specializzazione or request.specializzazioni or request.specializations or [],
             "porto_base": request.porto_base,
-            "telefono": request.telefono
+            "telefono": request.telefono,
+            "marina_lat": request.marina_lat,
+            "marina_lng": request.marina_lng,
         })
     await db.users.insert_one(user_doc)
     # Se tecnico, crea profilo per il matching
@@ -430,6 +434,8 @@ async def register(request: RegisterRequest):
             "rating": 0.0,
             "eco_certified": False,
             "avatar_url": None,
+            "marina_lat": request.marina_lat,
+            "marina_lng": request.marina_lng,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.technician_profiles.insert_one(tech_profile)
