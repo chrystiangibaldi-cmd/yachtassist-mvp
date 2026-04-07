@@ -4,11 +4,12 @@ import axios from 'axios';
 import { UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, LogOut, FileText, Euro, CheckCircle, MapPin } from 'lucide-react';
-import { GoogleMap, useLoadScript, MarkerF } from '@react-google-maps/api';
+import { GoogleMap, useLoadScript } from '@react-google-maps/api';
+import AdvancedMarker from '@/components/AdvancedMarker';
 
 const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
-const libraries = ['places'];
+const libraries = ['places', 'marker'];
 
 const mapContainerStyle = {
   width: '100%',
@@ -103,11 +104,12 @@ const TechnicianDashboard = () => {
                   center={{ lat: dashboard.user.marina_lat, lng: dashboard.user.marina_lng }}
                   zoom={14}
                   options={{
+                    mapId: 'DEMO_MAP_ID',
                     disableDefaultUI: true,
                     zoomControl: true,
                   }}
                 >
-                  <MarkerF position={{ lat: dashboard.user.marina_lat, lng: dashboard.user.marina_lng }} />
+                  <AdvancedMarker position={{ lat: dashboard.user.marina_lat, lng: dashboard.user.marina_lng }} />
                 </GoogleMap>
               </div>
             )}

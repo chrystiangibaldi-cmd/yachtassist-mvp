@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Anchor, ArrowLeft, CheckCircle, FileText, Calendar, Star, Award, CreditCard, Lock, Upload, Paperclip, MapPin } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { GoogleMap, useLoadScript, MarkerF } from '@react-google-maps/api';
+import { GoogleMap, useLoadScript } from '@react-google-maps/api';
+import AdvancedMarker from '@/components/AdvancedMarker';
 
 const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
-const libraries = ['places'];
+const libraries = ['places', 'marker'];
 
 const mapContainerStyle = {
   width: '100%',
@@ -401,11 +402,12 @@ const handleAddAttachments = async (files) => {
                   center={{ lat: yacht.marina_lat, lng: yacht.marina_lng }}
                   zoom={14}
                   options={{
+                    mapId: 'DEMO_MAP_ID',
                     disableDefaultUI: true,
                     zoomControl: true,
                   }}
                 >
-                  <MarkerF position={{ lat: yacht.marina_lat, lng: yacht.marina_lng }} />
+                  <AdvancedMarker position={{ lat: yacht.marina_lat, lng: yacht.marina_lng }} />
                 </GoogleMap>
               </div>
             )}
@@ -655,11 +657,12 @@ const handleAddAttachments = async (files) => {
                     center={appointmentCoords}
                     zoom={14}
                     options={{
+                      mapId: 'DEMO_MAP_ID',
                       disableDefaultUI: true,
                       zoomControl: true,
                     }}
                   >
-                    <MarkerF position={appointmentCoords} />
+                    <AdvancedMarker position={appointmentCoords} />
                   </GoogleMap>
                 </div>
               )}

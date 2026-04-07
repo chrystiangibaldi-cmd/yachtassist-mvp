@@ -4,11 +4,12 @@ import axios from 'axios';
 import { UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, Ship, AlertCircle, CheckCircle } from 'lucide-react';
-import { GoogleMap, useLoadScript, MarkerF } from '@react-google-maps/api';
+import { GoogleMap, useLoadScript } from '@react-google-maps/api';
+import AdvancedMarker from '@/components/AdvancedMarker';
 
 const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
-const libraries = ['places'];
+const libraries = ['places', 'marker'];
 
 const mapContainerStyle = {
   width: '100%',
@@ -323,11 +324,12 @@ const OnboardingYacht = () => {
                   center={portCoords}
                   zoom={14}
                   options={{
+                    mapId: 'DEMO_MAP_ID',
                     disableDefaultUI: true,
                     zoomControl: true,
                   }}
                 >
-                  <MarkerF position={portCoords} />
+                  <AdvancedMarker position={portCoords} />
                 </GoogleMap>
               </div>
             )}
