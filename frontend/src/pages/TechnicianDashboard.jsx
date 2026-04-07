@@ -3,14 +3,28 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
-import { Anchor, LogOut, FileText, Euro, CheckCircle } from 'lucide-react';
+import { Anchor, LogOut, FileText, Euro, CheckCircle, MapPin } from 'lucide-react';
+import { GoogleMap, useLoadScript, MarkerF } from '@react-google-maps/api';
 
 const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
+
+const libraries = ['places'];
+
+const mapContainerStyle = {
+  width: '100%',
+  height: '180px',
+  borderRadius: '0.5rem',
+};
 
 const TechnicianDashboard = () => {
   const navigate = useNavigate();
   const { user, logout } = useContext(UserContext);
   const [dashboard, setDashboard] = useState(null);
+
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '',
+    libraries,
+  });
 
   useEffect(() => {
     fetchDashboard();
@@ -73,6 +87,32 @@ const TechnicianDashboard = () => {
           <h2 className="text-3xl font-bold mb-2">Benvenuto, {user.name}!</h2>
           <p className="text-lg opacity-90">Pannello tecnico YachtAssist</p>
         </div>
+
+        {/* Porto base */}
+        {(dashboard.user.porto_base || dashboard.user.marina) && (
+          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-8">
+            <h3 className="text-lg font-semibold text-[#0A2342] mb-4 flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-[#1D9E75]" />
+              Porto base
+            </h3>
+            <p className="text-slate-700 font-medium mb-3">{dashboard.user.porto_base || dashboard.user.marina}</p>
+            {isLoaded && dashboard.user.marina_lat && dashboard.user.marina_lng && (
+              <div className="rounded-lg overflow-hidden border border-slate-200">
+                <GoogleMap
+                  mapContainerStyle={mapContainerStyle}
+                  center={{ lat: dashboard.user.marina_lat, lng: dashboard.user.marina_lng }}
+                  zoom={14}
+                  options={{
+                    disableDefaultUI: true,
+                    zoomControl: true,
+                  }}
+                >
+                  <MarkerF position={{ lat: dashboard.user.marina_lat, lng: dashboard.user.marina_lng }} />
+                </GoogleMap>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

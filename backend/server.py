@@ -79,6 +79,9 @@ class User(BaseModel):
     email: str
     role: Literal["owner", "technician"]
     avatar_url: Optional[str] = None
+    porto_base: Optional[str] = None
+    marina_lat: Optional[float] = None
+    marina_lng: Optional[float] = None
 
 class Yacht(BaseModel):
     model_config = ConfigDict(extra="ignore")
