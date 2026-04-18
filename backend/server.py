@@ -897,8 +897,8 @@ async def create_yacht(request: CreateYachtRequest, user_id: str):
     await db.checklist_items.insert_many(checklist_items)
     yacht_doc.pop("_id", None)
     return {"yacht": yacht_doc, "success": True}
+api_router.include_router(payments_router)
 app.include_router(api_router)
-app.include_router(payments_router)
 
 app.add_middleware(
     CORSMiddleware,
