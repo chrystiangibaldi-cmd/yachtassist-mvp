@@ -636,7 +636,7 @@ async def submit_quote(ticket_id: str, request: SubmitQuoteRequest):
 
     quote_items = [item.dict() for item in request.items]
     total = sum(item.importo for item in request.items)
-    commission = max(1, round(total * 0.15))
+    commission = max(1, round(total * 0.10))
     technician_payment = total - commission
 
     update_data = {
