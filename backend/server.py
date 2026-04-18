@@ -13,7 +13,7 @@ from typing import List, Optional, Literal, Any
 from datetime import datetime, timezone
 import uuid
 from .auth import hash_password, verify_password, create_access_token
-from .payments import payments_router, set_db
+from .payments import payments_router, set_db, calculate_commission
 from anthropic import Anthropic
 
 ROOT_DIR = Path(__file__).parent
@@ -636,8 +636,9 @@ async def submit_quote(ticket_id: str, request: SubmitQuoteRequest):
 
     quote_items = [item.dict() for item in request.items]
     total = sum(item.importo for item in request.items)
-    commission = max(1, round(total * 0.10))
-    technician_payment = total - commission
+    commission_data = calculate_commission(total)
+    commission = commission_data["commission"]
+    technician_payment = commission_data["payout"]
 
     update_data = {
         "quote_items": quote_items,
