@@ -12,6 +12,7 @@ import CreateTicket from '@/pages/CreateTicket';
 import TicketDetail from '@/pages/TicketDetail';
 import RequestIntervention from '@/pages/RequestIntervention';
 import OnboardingYacht from '@/pages/OnboardingYacht';
+import TechnicianTicketDetail from '@/pages/TechnicianTicketDetail';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 
@@ -108,7 +109,7 @@ function App() {
           
           {/* Protected Technician routes */}
           <Route path="/technician/dashboard" element={user?.role === 'technician' ? <TechnicianDashboard /> : <Navigate to="/login" />} />
-          <Route path="/technician/ticket/:id" element={user?.role === 'technician' ? <TicketDetail /> : <Navigate to="/login" />} />
+          <Route path="/technician/ticket/:id" element={user?.role === 'technician' ? <TechnicianTicketDetail /> : <Navigate to="/login" />} />
         </Routes>
       </BrowserRouter>
     </UserContext.Provider>

@@ -203,6 +203,10 @@ class TechnicianDashboard(BaseModel):
 class AssignTechnicianRequest(BaseModel):
     technician_id: str
 
+class SubmitQuoteRequest(BaseModel):
+    items: List[QuoteItem]
+    note: Optional[str] = None
+
 class CloseTicketRequest(BaseModel):
     documents: List[str]
 
@@ -621,6 +625,68 @@ async def set_appointment(ticket_id: str, request: SetAppointmentRequest):
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return {"success": True}
+
+@api_router.post("/tickets/{ticket_id}/preventivo")
+async def submit_quote(ticket_id: str, request: SubmitQuoteRequest):
+    ticket = await db.tickets.find_one({"id": ticket_id}, {"_id": 0})
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    if ticket["status"] != "assegnato":
+        raise HTTPException(status_code=400, detail="Il preventivo può essere inviato solo per ticket assegnati")
+
+    quote_items = [item.dict() for item in request.items]
+    total = sum(item.importo for item in request.items)
+    commission = max(1, round(total * 0.15))
+    technician_payment = total - commission
+
+    update_data = {
+        "quote_items": quote_items,
+        "final_price": total,
+        "commission": commission,
+        "technician_payment": technician_payment,
+    }
+    if request.note:
+        update_data["quote_note"] = request.note
+
+    await db.tickets.update_one({"id": ticket_id}, {"$set": update_data})
+
+    # Notifica owner via email
+    owner = await db.users.find_one({"id": ticket["owner_id"]}, {"_id": 0})
+    if owner and owner.get("email"):
+        items_html = "".join(
+            f"<tr><td style='padding:8px;border-bottom:1px solid #e2e8f0'>{i.voce}</td>"
+            f"<td style='padding:8px;border-bottom:1px solid #e2e8f0;text-align:right'>€{i.importo}</td></tr>"
+            for i in request.items
+        )
+        note_html = f"<p style='color:#64748b;margin-top:16px'><strong>Note:</strong> {request.note}</p>" if request.note else ""
+        owner_html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #0A2342, #1D9E75); padding: 24px; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 20px;">Nuovo preventivo per Ticket #{ticket_id}</h1>
+            </div>
+            <div style="background: #f8fafc; padding: 24px; border: 1px solid #e2e8f0; border-radius: 0 0 10px 10px;">
+                <table style="width:100%;border-collapse:collapse">
+                    <thead><tr style="border-bottom:2px solid #0A2342">
+                        <th style="text-align:left;padding:8px;color:#0A2342">Voce</th>
+                        <th style="text-align:right;padding:8px;color:#0A2342">Importo</th>
+                    </tr></thead>
+                    <tbody>{items_html}</tbody>
+                    <tfoot><tr style="border-top:2px solid #0A2342">
+                        <td style="padding:8px;font-weight:bold;color:#0A2342">Totale</td>
+                        <td style="padding:8px;font-weight:bold;color:#0A2342;text-align:right">€{total}</td>
+                    </tr></tfoot>
+                </table>
+                {note_html}
+            </div>
+        </div>
+        """
+        asyncio.create_task(send_email_notification(
+            owner["email"],
+            f"Preventivo ricevuto - Ticket #{ticket_id} - YachtAssist",
+            owner_html
+        ))
+
+    return {"success": True, "total": total}
 
 @api_router.post("/tickets/{ticket_id}/close")
 async def close_ticket(ticket_id: str, request: CloseTicketRequest):
