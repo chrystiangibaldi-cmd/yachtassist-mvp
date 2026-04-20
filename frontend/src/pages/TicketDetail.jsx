@@ -487,18 +487,6 @@ const handleAddAttachments = async (files) => {
                 </tr>
               </tbody>
             </table>
-            {ticket.preventivo_pdf?.data && (
-              <div className="mt-4 pt-4 border-t border-slate-100">
-                <a
-                  href={ticket.preventivo_pdf.data}
-                  download={ticket.preventivo_pdf.name || `preventivo-${ticket.id}.pdf`}
-                  className="inline-flex items-center gap-2 text-sm font-medium text-[#1D9E75] hover:text-[#1D9E75]/80"
-                >
-                  <Paperclip className="w-4 h-4" />
-                  Scarica preventivo PDF ({ticket.preventivo_pdf.name || 'preventivo.pdf'})
-                </a>
-              </div>
-            )}
           </div>
         ) : (ticket.status === 'chiuso' || ticket.status === 'pagato') && ticket.final_price != null ? (
           <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6">
@@ -512,6 +500,19 @@ const handleAddAttachments = async (files) => {
           <div className="bg-amber-50 border border-amber-200 rounded-lg shadow-sm p-6 mb-6">
             <h3 className="text-lg font-semibold text-[#0A2342] mb-2">Dettaglio preventivo</h3>
             <p className="text-amber-700 text-sm">In attesa del preventivo del tecnico</p>
+          </div>
+        )}
+
+        {ticket.preventivo_pdf?.data && (
+          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6">
+            <a
+              href={ticket.preventivo_pdf.data}
+              download={ticket.preventivo_pdf.name || `preventivo-${ticket.id}.pdf`}
+              className="inline-flex items-center gap-2 text-sm font-medium text-[#1D9E75] hover:text-[#1D9E75]/80"
+            >
+              <Paperclip className="w-4 h-4" />
+              Scarica preventivo PDF ({ticket.preventivo_pdf.name || 'preventivo.pdf'})
+            </a>
           </div>
         )}
 
