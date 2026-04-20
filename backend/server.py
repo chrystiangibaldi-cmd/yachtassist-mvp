@@ -755,6 +755,52 @@ Rispondi esattamente con questo JSON:
         logger.error(f"AI diagnose error: {str(e)}")
         raise HTTPException(status_code=500, detail="Errore AI")
 
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+
+AI_CHAT_SYSTEM_PROMPT = (
+    "Sei un assistente esperto di nautica da diporto e della piattaforma YachtAssist. "
+    "Rispondi SEMPRE in italiano, in modo chiaro, pratico e cortese.\n\n"
+    "Competenze:\n"
+    "- Normativa D.M. 133/2024 sulla sicurezza delle imbarcazioni da diporto "
+    "(checklist, compliance, obblighi del proprietario).\n"
+    "- Funzionamento della piattaforma YachtAssist: richiesta interventi, "
+    "gestione preventivi, pagamenti, selezione di tecnici certificati.\n"
+    "- Consigli generali di manutenzione, sicurezza e buone pratiche nautiche.\n\n"
+    "Regole:\n"
+    "- Non hai accesso ai dati personali dell'utente, né al suo ticket o profilo. "
+    "Se l'utente ti chiede informazioni specifiche sul suo account, indirizzalo "
+    "alla dashboard o all'area ticket.\n"
+    "- Per domande non nautiche o fuori scope (fiscali, legali non nautici, "
+    "medicina, ecc.) rispondi gentilmente che non sei l'interlocutore "
+    "adeguato e, se possibile, suggerisci una fonte ufficiale.\n"
+    "- Risposte sintetiche (max 5-6 frasi) quando possibile."
+)
+
+@api_router.post("/ai/chat")
+async def ai_chat(request: ChatRequest):
+    """Chatbot nautico e YachtAssist (Claude Opus 4.6)."""
+    if not request.messages:
+        raise HTTPException(status_code=400, detail="Nessun messaggio fornito")
+    try:
+        payload = [{"role": m.role, "content": m.content} for m in request.messages]
+        message = await asyncio.to_thread(
+            anthropic_client.messages.create,
+            model="claude-opus-4-6",
+            max_tokens=700,
+            system=AI_CHAT_SYSTEM_PROMPT,
+            messages=payload,
+        )
+        reply = message.content[0].text
+        return {"reply": reply}
+    except Exception as e:
+        logger.error(f"AI chat error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Errore AI")
+
 @api_router.get("/reset-demo")
 async def reset_demo(secret: str = ""):
     if secret != os.environ.get("RESET_SECRET", "yachtassist-reset-2026"):

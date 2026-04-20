@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Anchor, LogOut, FileText, Wrench, Calendar, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import { GoogleMap, useLoadScript } from '@react-google-maps/api';
 import AdvancedMarker from '@/components/AdvancedMarker';
+import AiChatWidget from '@/components/AiChatWidget';
 
 const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
@@ -237,6 +238,7 @@ const OwnerDashboard = () => {
           </div>
         </div>
       </main>
+      <AiChatWidget />
     </div>
   );
 };
