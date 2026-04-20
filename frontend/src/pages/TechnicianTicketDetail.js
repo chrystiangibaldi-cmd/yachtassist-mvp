@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { UserContext, API } from '@/App';
 import { Button } from '@/components/ui/button';
-import { Anchor, ArrowLeft, CheckCircle, FileText, Calendar, Euro, MapPin, Send, Plus, Trash2 } from 'lucide-react';
+import { Anchor, ArrowLeft, CheckCircle, FileText, Calendar, Euro, MapPin, Send, Plus, Trash2, Upload, X } from 'lucide-react';
 
 const TechnicianTicketDetail = () => {
   const navigate = useNavigate();
@@ -18,6 +18,7 @@ const TechnicianTicketDetail = () => {
   const [submittingQuote, setSubmittingQuote] = useState(false);
   const [quoteError, setQuoteError] = useState('');
   const [quoteSuccess, setQuoteSuccess] = useState(false);
+  const [quotePdf, setQuotePdf] = useState(null); // { name, data (base64) }
 
   useEffect(() => {
     fetchData();
@@ -75,6 +76,34 @@ const TechnicianTicketDetail = () => {
 
   const quoteTotal = quoteRows.reduce((sum, row) => sum + (parseFloat(row.importo) || 0), 0);
 
+  const handlePdfChange = (e) => {
+    setQuoteError('');
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+      setQuoteError('Il file deve essere in formato PDF');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setQuoteError('Il PDF non può superare i 5 MB');
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setQuotePdf({ name: file.name, data: reader.result });
+    };
+    reader.onerror = () => {
+      setQuoteError('Errore nella lettura del file');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removePdf = () => {
+    setQuotePdf(null);
+  };
+
   const handleSubmitQuote = async () => {
     setQuoteError('');
     const validRows = quoteRows.filter(r => r.voce.trim() && r.importo);
@@ -97,7 +126,8 @@ const TechnicianTicketDetail = () => {
           descrizione: r.descrizione.trim(),
           importo: Math.round(parseFloat(r.importo))
         })),
-        note: quoteNotes.trim() || null
+        note: quoteNotes.trim() || null,
+        preventivo_pdf: quotePdf ? { name: quotePdf.name, data: quotePdf.data } : null
       });
       setQuoteSuccess(true);
       await fetchData();
@@ -330,6 +360,39 @@ const TechnicianTicketDetail = () => {
                 rows={2}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1D9E75] resize-none"
               />
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-500 mb-1">
+                Allega preventivo in PDF (opzionale, max 5MB)
+              </label>
+              {!quotePdf ? (
+                <label className="flex items-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 rounded-lg text-sm text-slate-600 cursor-pointer hover:border-[#1D9E75] hover:text-[#1D9E75] transition-colors">
+                  <Upload className="w-4 h-4" />
+                  <span>Seleziona un file PDF</span>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handlePdfChange}
+                    className="hidden"
+                  />
+                </label>
+              ) : (
+                <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileText className="w-4 h-4 text-[#1D9E75] shrink-0" />
+                    <span className="text-sm text-slate-700 truncate">{quotePdf.name}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removePdf}
+                    className="p-1 text-slate-400 hover:text-red-500 shrink-0"
+                    aria-label="Rimuovi PDF"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
 
             {quoteError && (
