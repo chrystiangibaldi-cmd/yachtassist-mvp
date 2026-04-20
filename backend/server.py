@@ -144,6 +144,8 @@ class Ticket(BaseModel):
     appointment_lng: Optional[float] = None
     documents: List[str] = []
     quote_items: Optional[List[QuoteItem]] = None
+    quote_note: Optional[str] = None
+    preventivo_pdf: Optional[Any] = None
     created_at: str
 
 
