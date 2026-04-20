@@ -107,7 +107,7 @@ async def stripe_webhook(request: Request):
         event = stripe.Webhook.construct_event(
             payload, sig_header, WEBHOOK_SECRET
         )
-    except stripe.errors.SignatureVerificationError:
+    except stripe.SignatureVerificationError:
         logger.error("Webhook signature non valida")
         raise HTTPException(status_code=400, detail="Firma webhook non valida")
 
@@ -123,8 +123,7 @@ async def stripe_webhook(request: Request):
                     {"id": ticket_id},
                     {"$set": {
                         "status": "chiuso",
-                        "payment_status": "paid",
-                        "documents": []
+                        "payment_status": "paid"
                     }}
                 )
                 await db.yachts.update_one(
