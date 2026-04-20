@@ -376,6 +376,7 @@ const Register = () => {
   { id: 'idraulico',         label: '🔧 Idraulico & Tubista' },
   { id: 'verniciatore',      label: '🖌️ Verniciatore & Lucidatore' },
   { id: 'lavanderia',        label: '👕 Lavanderia' },
+  { id: 'posti_barca',       label: '🅿️ Posti Barca' },
 ].map(cat => (
   <label key={cat.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 rounded p-1">
     <input

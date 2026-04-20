@@ -1,4 +1,4 @@
-// v3.0 - 20 categories
+// v3.1 - 21 categories
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -49,6 +49,7 @@ const RequestIntervention = () => {
     { id: 'idraulico', icon: '🔧', name: 'Idraulico & Tubista', subcategories: ['Ombrinali', 'Pompe alta e bassa pressione', 'Pressfitting', 'Cunipress', 'Multistrato', 'Prese a mare', 'Seacest / cestelli', 'Boiler', 'Autoclave', 'Coibentazione tubi'] },
     { id: 'verniciatore', icon: '🖌️', name: 'Verniciatore & Lucidatore', subcategories: ['Verniciatura gelcoat', 'Verniciatura smalto', 'Verniciatura vetroresina', 'Verniciatura metalli', 'Lucidatura gelcoat', 'Touch-up e ritocchi', 'Verniciatura interna legno', 'Pittore nome nave', 'Nano tecnologie'] },
     { id: 'lavanderia', icon: '👕', name: 'Lavanderia', subcategories: ['Pick-up biancheria', 'Roll-in / Roll-out', 'Lavaggio tappezzerie', 'Lavaggio moquettes'] },
+    { id: 'posti_barca', icon: '🅿️', name: 'Posti Barca', subcategories: ['Ormeggio temporaneo', 'Ormeggio stagionale', 'Posto barca annuale', 'Cambio posto', 'Assistenza ormeggio'] },
     { id: 'emergenza', icon: '🚨', name: 'EMERGENZA', isEmergency: true, subcategories: [] },
 ];
 
