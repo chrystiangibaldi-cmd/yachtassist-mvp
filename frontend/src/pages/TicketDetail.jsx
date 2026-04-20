@@ -5,7 +5,7 @@ import { UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, ArrowLeft, CheckCircle, FileText, Calendar, Star, Award, CreditCard, Lock, Upload, Paperclip, MapPin } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { GoogleMap, useLoadScript } from '@react-google-maps/api';
 import AdvancedMarker from '@/components/AdvancedMarker';
 
@@ -21,60 +21,37 @@ const mapContainerStyle = {
 
 const stripePromise = loadStripe('pk_test_51RtUo8Cq3C8e7g9xhNW8lANL74jpfwhANr6YDUwGfv96NzCoJwFYhwAXBOtot4rESSM4Mmhq4qlELP72FocRjs5K00tNGeqaBI');
 
-const PaymentForm = ({ ticket, onSuccess, onCancel }) => {
+const PaymentForm = ({ paymentData, onSuccess, onCancel }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [clientSecret, setClientSecret] = useState(null);
-  const [paymentData, setPaymentData] = useState(null);
-
-  useEffect(() => {
-    const createIntent = async () => {
-      try {
-        const res = await axios.post(
-          `${BACKEND}/payments/create-intent?ticket_id=${ticket.id}`
-        );
-        setClientSecret(res.data.client_secret);
-        setPaymentData(res.data);
-      } catch (err) {
-        setError('Errore nella creazione del pagamento. Riprova.');
-      }
-    };
-    createIntent();
-  }, [ticket.id]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!stripe || !elements || !clientSecret) return;
+    if (!stripe || !elements) return;
 
     setLoading(true);
     setError(null);
 
-    const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-      payment_method: {
-        card: elements.getElement(CardElement),
+    const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: window.location.href,
       },
+      redirect: 'if_required',
     });
 
     if (stripeError) {
       setError(stripeError.message);
       setLoading(false);
-    } else if (paymentIntent.status === 'succeeded') {
+    } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+      onSuccess();
+    } else {
+      // es. status=processing per SEPA/bonifico: il webhook chiuderà il ticket
+      setLoading(false);
       onSuccess();
     }
-  };
-
-  const cardStyle = {
-    style: {
-      base: {
-        fontSize: '16px',
-        color: '#0A2342',
-        fontFamily: 'Inter, sans-serif',
-        '::placeholder': { color: '#94a3b8' },
-      },
-      invalid: { color: '#ef4444' },
-    },
   };
 
   return (
@@ -94,12 +71,8 @@ const PaymentForm = ({ ticket, onSuccess, onCancel }) => {
       )}
 
       <form onSubmit={handleSubmit}>
-        <div className="border border-slate-200 rounded-lg p-4 mb-4 bg-slate-50">
-          {clientSecret ? (
-            <CardElement options={cardStyle} />
-          ) : (
-            <p className="text-slate-400 text-sm">Caricamento...</p>
-          )}
+        <div className="mb-4">
+          <PaymentElement options={{ layout: 'tabs' }} />
         </div>
 
         <p className="text-xs text-slate-400 mb-4 flex items-center gap-1">
@@ -125,7 +98,7 @@ const PaymentForm = ({ ticket, onSuccess, onCancel }) => {
           </Button>
           <Button
             type="submit"
-            disabled={!stripe || !clientSecret || loading}
+            disabled={!stripe || loading}
             className="flex-1 bg-[#1D9E75] hover:bg-[#1D9E75]/90 text-white"
           >
             {loading ? 'Elaborazione...' : `Paga €${paymentData?.amount || ''}`}
@@ -133,6 +106,61 @@ const PaymentForm = ({ ticket, onSuccess, onCancel }) => {
         </div>
       </form>
     </div>
+  );
+};
+
+const PaymentSection = ({ ticket, onSuccess, onCancel }) => {
+  const [clientSecret, setClientSecret] = useState(null);
+  const [paymentData, setPaymentData] = useState(null);
+  const [initError, setInitError] = useState(null);
+
+  useEffect(() => {
+    const createIntent = async () => {
+      try {
+        const res = await axios.post(
+          `${BACKEND}/payments/create-intent?ticket_id=${ticket.id}`
+        );
+        setClientSecret(res.data.client_secret);
+        setPaymentData(res.data);
+      } catch (err) {
+        setInitError('Errore nella creazione del pagamento. Riprova.');
+      }
+    };
+    createIntent();
+  }, [ticket.id]);
+
+  if (initError) {
+    return (
+      <div className="bg-white border-2 border-red-300 rounded-lg shadow-sm p-6 mb-6">
+        <p className="text-red-600 text-sm mb-4">{initError}</p>
+        <Button onClick={onCancel} variant="outline" className="border-slate-200">
+          Chiudi
+        </Button>
+      </div>
+    );
+  }
+
+  if (!clientSecret) {
+    return (
+      <div className="bg-white border-2 border-[#1D9E75] rounded-lg shadow-sm p-6 mb-6">
+        <p className="text-slate-400 text-sm">Caricamento metodi di pagamento...</p>
+      </div>
+    );
+  }
+
+  const appearance = {
+    theme: 'stripe',
+    variables: {
+      colorPrimary: '#1D9E75',
+      colorText: '#0A2342',
+      fontFamily: 'Inter, sans-serif',
+    },
+  };
+
+  return (
+    <Elements stripe={stripePromise} options={{ clientSecret, appearance, locale: 'it' }}>
+      <PaymentForm paymentData={paymentData} onSuccess={onSuccess} onCancel={onCancel} />
+    </Elements>
   );
 };
 
@@ -602,13 +630,11 @@ const handleAddAttachments = async (files) => {
         )}
 
         {ticket.status === 'assegnato' && user.role === 'owner' && showPayment && (
-          <Elements stripe={stripePromise}>
-            <PaymentForm
-              ticket={ticket}
-              onSuccess={handlePaymentSuccess}
-              onCancel={() => setShowPayment(false)}
-            />
-          </Elements>
+          <PaymentSection
+            ticket={ticket}
+            onSuccess={handlePaymentSuccess}
+            onCancel={() => setShowPayment(false)}
+          />
         )}
 {ticket.status === 'assegnato' && user.role === 'owner' && !showPayment && (
   <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 mb-4 flex items-center gap-3">

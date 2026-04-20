@@ -58,6 +58,7 @@ async def create_payment_intent(ticket_id: str):
         intent = stripe.PaymentIntent.create(
             amount=amount_euros * 100,  # Stripe vuole centesimi
             currency="eur",
+            automatic_payment_methods={"enabled": True},
             metadata={
                 "ticket_id": ticket_id,
                 "owner_id": ticket.get("owner_id", ""),
