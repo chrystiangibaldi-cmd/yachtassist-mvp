@@ -7,13 +7,15 @@
  * @param {null|undefined|string|{datetime?: string, location?: string, lat?: number, lng?: number}} appointment
  *        L'appuntamento da verificare.
  * @returns {boolean} `true` se l'appuntamento è presente e significativo,
- *                    `false` se è `null`/`undefined`, stringa vuota o oggetto senza `datetime`.
+ *                    `false` se è `null`/`undefined`, stringa vuota, oppure oggetto
+ *                    senza `datetime` o con `datetime` non parsabile.
  */
 export function isAppointmentSet(appointment) {
   if (appointment == null) return false;
   if (typeof appointment === "string") return appointment.trim().length > 0;
   if (typeof appointment === "object") {
-    return typeof appointment.datetime === "string" && appointment.datetime.trim().length > 0;
+    if (typeof appointment.datetime !== "string" || appointment.datetime.trim().length === 0) return false;
+    return !Number.isNaN(new Date(appointment.datetime).getTime());
   }
   return false;
 }
