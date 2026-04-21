@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Anchor, LogOut, FileText, Euro, CheckCircle, MapPin } from 'lucide-react';
 import { GoogleMap, useLoadScript } from '@react-google-maps/api';
 import AdvancedMarker from '@/components/AdvancedMarker';
+import { formatAppointment } from '@/utils/appointment';
 
 const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
@@ -183,7 +184,7 @@ const TechnicianDashboard = () => {
                   )}
                   {ticket.appointment && (
                     <div className="mt-2 text-sm text-slate-600">
-                      📅 {ticket.appointment}
+                      📅 {formatAppointment(ticket.appointment)}
                     </div>
                   )}
                 </div>
