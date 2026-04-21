@@ -4,6 +4,7 @@ import axios from 'axios';
 import { UserContext, API } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, ArrowLeft, CheckCircle, FileText, Calendar, Euro, MapPin, Send, Plus, Trash2, Upload, X } from 'lucide-react';
+import { formatAppointment } from '@/utils/appointment';
 
 const TechnicianTicketDetail = () => {
   const navigate = useNavigate();
@@ -214,14 +215,12 @@ const TechnicianTicketDetail = () => {
               </span>
               <p className="text-[#0A2342] font-medium">{ticket.marina}</p>
             </div>
-            {ticket.appointment && (
-              <div>
-                <span className="text-sm text-slate-500 font-medium flex items-center gap-1">
-                  <Calendar className="w-3 h-3" /> Appuntamento
-                </span>
-                <p className="text-[#0A2342] font-medium">{ticket.appointment}</p>
-              </div>
-            )}
+            <div>
+              <span className="text-sm text-slate-500 font-medium flex items-center gap-1">
+                <Calendar className="w-3 h-3" /> Appuntamento
+              </span>
+              <p className="text-[#0A2342] font-medium">{formatAppointment(ticket.appointment)}</p>
+            </div>
           </div>
           {ticket.description && (
             <div className="mt-4 pt-4 border-t border-slate-100">
