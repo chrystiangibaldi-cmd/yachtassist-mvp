@@ -358,7 +358,7 @@ const handleAddAttachments = async (files) => {
   }
 
   const getStatusSteps = () => {
-    const steps = ['aperto', 'assegnato', 'accettato', 'eseguito', 'chiuso'];
+    const steps = ['aperto', 'assegnato', 'pagato', 'confermato', 'eseguito', 'chiuso'];
     const currentIndex = steps.indexOf(ticket.status);
     return steps.map((step, idx) => ({
       name: step.charAt(0).toUpperCase() + step.slice(1),

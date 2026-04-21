@@ -8,9 +8,10 @@ import asyncio
 import resend
 import json
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from pydantic import BaseModel, Field, ConfigDict, EmailStr, field_validator
 from typing import List, Optional, Literal, Any
 from datetime import datetime, timezone
+from datetime import datetime as _dt  # alias per annotazioni che altrimenti sarebbero shadowate dal nome di campo `datetime`
 import uuid
 from .auth import hash_password, verify_password, create_access_token
 from .payments import payments_router, set_db, calculate_commission
@@ -121,13 +122,19 @@ class QuoteItem(BaseModel):
     descrizione: str
     importo: int
 
+class Appointment(BaseModel):
+    datetime: Optional[_dt] = None
+    location: str
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+
 class Ticket(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
     yacht_id: str
     owner_id: str
     technician_id: Optional[str] = None
-    status: Literal["aperto", "assegnato", "accettato", "eseguito", "chiuso"]
+    status: Literal["aperto", "assegnato", "pagato", "confermato", "eseguito", "chiuso"]
     urgency: Literal["alta", "media", "bassa", "emergenza"]
     work_items: List[str]
     category: Optional[str] = None
@@ -139,14 +146,24 @@ class Ticket(BaseModel):
     commission: Optional[int] = None
     technician_payment: Optional[int] = None
     marina: str
-    appointment: Optional[str] = None
-    appointment_lat: Optional[float] = None
-    appointment_lng: Optional[float] = None
+    appointment: Optional[Appointment] = None
+    proposed_slots: Optional[List[str]] = None
+    appointment_lat: Optional[float] = None  # DEPRECATED, rimuovere in commit 5d dopo rollout completo
+    appointment_lng: Optional[float] = None  # DEPRECATED, rimuovere in commit 5d dopo rollout completo
     documents: List[str] = []
     quote_items: Optional[List[QuoteItem]] = None
     quote_note: Optional[str] = None
     preventivo_pdf: Optional[Any] = None
     created_at: str
+
+    @field_validator("appointment", mode="before")
+    @classmethod
+    def _coerce_legacy_appointment(cls, v):
+        if isinstance(v, str):
+            if v.strip():
+                return {"datetime": None, "location": v, "lat": None, "lng": None}
+            return None
+        return v
 
 
 class Attachment(BaseModel):
@@ -493,7 +510,7 @@ async def get_owner_dashboard(user_id: str = "owner-1"):
         )
     tickets = await db.tickets.find({"owner_id": user_id}, {"_id": 0}).to_list(10)
     open_tickets = len([t for t in tickets if t["status"] in ["aperto", "assegnato"]])
-    active_interventions = len([t for t in tickets if t["status"] == "accettato"])
+    active_interventions = len([t for t in tickets if t["status"] == "pagato"])
     return OwnerDashboard(
         user=User(**user), yacht=Yacht(**yacht),
         open_tickets=open_tickets, active_interventions=active_interventions,
@@ -508,7 +525,7 @@ async def get_technician_dashboard(user_id: str = "tech-1"):
             raise HTTPException(status_code=404, detail=f"User {user_id} not found")
         tickets = await db.tickets.find({"technician_id": user_id}, {"_id": 0}).to_list(10)
         total_earnings = sum([(t.get("technician_payment") or 0) for t in tickets if t["status"] == "chiuso"])
-        pending_earnings = sum([(t.get("technician_payment") or 0) for t in tickets if t["status"] in ["assegnato", "accettato", "eseguito"]])
+        pending_earnings = sum([(t.get("technician_payment") or 0) for t in tickets if t["status"] in ["assegnato", "pagato", "eseguito"]])
         return TechnicianDashboard(
             user=User(**user), assigned_tickets=[Ticket(**t) for t in tickets],
             total_earnings=total_earnings, pending_earnings=pending_earnings
@@ -612,8 +629,8 @@ async def create_generic_ticket(request: CreateTicketRequest, user_id: str):
 
 class SetAppointmentRequest(BaseModel):
     appointment: str
-    appointment_lat: Optional[float] = None
-    appointment_lng: Optional[float] = None
+    appointment_lat: Optional[float] = None  # DEPRECATED, rimuovere in commit 5d dopo rollout completo
+    appointment_lng: Optional[float] = None  # DEPRECATED, rimuovere in commit 5d dopo rollout completo
 
 @api_router.post("/tickets/{ticket_id}/appointment")
 async def set_appointment(ticket_id: str, request: SetAppointmentRequest):
