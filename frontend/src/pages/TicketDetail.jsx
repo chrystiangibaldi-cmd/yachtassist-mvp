@@ -8,6 +8,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { GoogleMap, useLoadScript } from '@react-google-maps/api';
 import AdvancedMarker from '@/components/AdvancedMarker';
+import { formatAppointment } from '@/utils/appointment';
 
 const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
@@ -471,7 +472,7 @@ const handleAddAttachments = async (files) => {
               <div className="flex items-center gap-2 mb-4 text-slate-700">
                 <Calendar className="w-5 h-5 text-[#1D9E75]" />
                 <span className="font-medium">Appuntamento:</span>
-                <span>{ticket.appointment}</span>
+                <span>{formatAppointment(ticket.appointment)}</span>
               </div>
             )}
             <div className="mb-4">
