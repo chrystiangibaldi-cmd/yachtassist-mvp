@@ -582,7 +582,6 @@ async def assign_technician(ticket_id: str, request: AssignTechnicianRequest):
     update_data = {
         "technician_id": request.technician_id,
         "status": "assegnato",
-        "appointment": "Sab 5 apr · 09:30 · Marina di Pisa pontile B"
     }
     if quote_items:
         update_data["quote_items"] = quote_items
