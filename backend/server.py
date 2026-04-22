@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr, field_validator
 from typing import List, Optional, Literal, Any
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from datetime import datetime as _dt  # alias per annotazioni che altrimenti sarebbero shadowate dal nome di campo `datetime`
 import uuid
 from .auth import hash_password, verify_password, create_access_token
@@ -155,6 +155,8 @@ class Ticket(BaseModel):
     quote_note: Optional[str] = None
     preventivo_pdf: Optional[Any] = None
     created_at: str
+    appointment_proposed_at: Optional[str] = None
+    appointment_confirmed_at: Optional[str] = None
 
     @field_validator("appointment", mode="before")
     @classmethod
@@ -229,6 +231,39 @@ class SubmitQuoteRequest(BaseModel):
 
 class CloseTicketRequest(BaseModel):
     documents: List[str]
+
+class ProposeAppointmentRequest(BaseModel):
+    slots: List[str] = Field(..., min_length=1, max_length=5)
+
+    @field_validator("slots")
+    @classmethod
+    def _clean_slots(cls, v: List[str]) -> List[str]:
+        cleaned = [s.strip() for s in v if s.strip()]
+        for s in cleaned:
+            if len(s) > 200:
+                raise ValueError("Ogni slot max 200 caratteri")
+        if not cleaned:
+            raise ValueError("Almeno uno slot non vuoto richiesto")
+        return cleaned
+
+class ConfirmAppointmentRequest(BaseModel):
+    scheduled_at: str
+    location: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+
+    @field_validator("scheduled_at")
+    @classmethod
+    def _validate_future(cls, v: str) -> str:
+        try:
+            dt = datetime.fromisoformat(v)
+        except ValueError:
+            raise ValueError("scheduled_at deve essere ISO 8601")
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        if dt < datetime.now(timezone.utc) - timedelta(minutes=5):
+            raise ValueError("scheduled_at deve essere nel futuro")
+        return v
 
 class DiagnoseRequest(BaseModel):
     description: str
@@ -738,6 +773,119 @@ async def add_photos_to_ticket(ticket_id: str, request: AddPhotosRequest):
         {"$set": {"photos": updated_photos}}
     )
     return {"success": True}
+
+@api_router.post("/tickets/{ticket_id}/propose-appointment")
+async def propose_appointment(
+    ticket_id: str,
+    request: ProposeAppointmentRequest,
+    user_id: str,
+):
+    ticket = await db.tickets.find_one({"id": ticket_id}, {"_id": 0})
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket non trovato")
+
+    if ticket.get("technician_id") != user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Solo il tecnico assegnato può proporre disponibilità",
+        )
+
+    if ticket["status"] in ("confermato", "eseguito", "chiuso"):
+        raise HTTPException(
+            status_code=400,
+            detail="Appuntamento già confermato, contatta il tecnico per modifiche",
+        )
+
+    if ticket["status"] != "pagato":
+        raise HTTPException(status_code=400, detail="Ticket non in stato pagato")
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    await db.tickets.update_one(
+        {"id": ticket_id},
+        {"$set": {
+            "proposed_slots": request.slots,
+            "appointment_proposed_at": now_iso,
+        }},
+    )
+
+    return {
+        "success": True,
+        "proposed_slots": request.slots,
+        "appointment_proposed_at": now_iso,
+    }
+
+@api_router.post("/tickets/{ticket_id}/confirm-appointment")
+async def confirm_appointment(
+    ticket_id: str,
+    request: ConfirmAppointmentRequest,
+    user_id: str,
+):
+    ticket = await db.tickets.find_one({"id": ticket_id}, {"_id": 0})
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket non trovato")
+
+    if ticket.get("owner_id") != user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Solo il proprietario può confermare l'appuntamento",
+        )
+
+    if ticket["status"] in ("confermato", "eseguito", "chiuso"):
+        raise HTTPException(
+            status_code=400,
+            detail="Appuntamento già confermato, contatta il tecnico per modifiche",
+        )
+
+    if ticket["status"] != "pagato":
+        raise HTTPException(status_code=400, detail="Ticket non in stato pagato")
+
+    if not ticket.get("proposed_slots"):
+        raise HTTPException(
+            status_code=400,
+            detail="Nessuno slot disponibile: il tecnico deve prima proporre la disponibilità",
+        )
+
+    final_location = request.location
+    final_lat = request.lat
+    final_lng = request.lng
+    if final_location is None or final_lat is None or final_lng is None:
+        yacht = await db.yachts.find_one({"id": ticket.get("yacht_id", "")}, {"_id": 0})
+        if yacht:
+            if final_location is None:
+                final_location = yacht.get("marina", "")
+            if final_lat is None:
+                final_lat = yacht.get("marina_lat")
+            if final_lng is None:
+                final_lng = yacht.get("marina_lng")
+    if final_location is None:
+        final_location = ticket.get("marina", "")
+
+    dt_iso = datetime.fromisoformat(request.scheduled_at).isoformat()
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    new_appointment = {
+        "datetime": dt_iso,
+        "location": final_location,
+        "lat": final_lat,
+        "lng": final_lng,
+    }
+
+    await db.tickets.update_one(
+        {"id": ticket_id},
+        {"$set": {
+            "appointment": new_appointment,
+            "status": "confermato",
+            "appointment_confirmed_at": now_iso,
+        }},
+    )
+
+    return {
+        "success": True,
+        "appointment": new_appointment,
+        "status": "confermato",
+        "appointment_confirmed_at": now_iso,
+    }
 
 @api_router.post("/ai/diagnose")
 async def ai_diagnose(request: DiagnoseRequest):
