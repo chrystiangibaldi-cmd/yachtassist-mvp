@@ -45,8 +45,8 @@ async def create_payment_intent(ticket_id: str):
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket non trovato")
 
-    if ticket["status"] == "chiuso":
-        raise HTTPException(status_code=400, detail="Ticket già pagato e chiuso")
+    if ticket["status"] in ("chiuso", "pagato"):
+        raise HTTPException(status_code=400, detail="Ticket già pagato")
 
     amount_euros = ticket.get("final_price") or ticket.get("price_max", 0)
     if amount_euros <= 0:
@@ -119,18 +119,16 @@ async def stripe_webhook(request: Request):
         if ticket_id:
             ticket = await db.tickets.find_one({"id": ticket_id}, {"_id": 0})
             if ticket:
-                # Chiudi il ticket e aggiorna compliance
+                if ticket.get("status") == "pagato":
+                    logger.info(f"Ticket {ticket_id} già 'pagato', webhook idempotente: skip")
+                    return {"received": True, "status": "already_processed"}
                 await db.tickets.update_one(
                     {"id": ticket_id},
                     {"$set": {
-                        "status": "chiuso",
+                        "status": "pagato",
                         "payment_status": "paid"
                     }}
                 )
-                await db.yachts.update_one(
-                    {"id": ticket.get("yacht_id", "")},
-                    {"$set": {"compliance_score": 100}}
-                )
-                logger.info(f"Ticket {ticket_id} chiuso dopo pagamento Stripe")
+                logger.info(f"Ticket {ticket_id} transizionato a 'pagato' dopo pagamento Stripe")
 
     return {"received": True}
