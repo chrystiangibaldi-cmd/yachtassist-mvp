@@ -8,7 +8,8 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { GoogleMap, useLoadScript } from '@react-google-maps/api';
 import AdvancedMarker from '@/components/AdvancedMarker';
-import { formatAppointment } from '@/utils/appointment';
+import { formatAppointment, parseSlotText } from '@/utils/appointment';
+import { toast } from 'sonner';
 
 const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
@@ -182,6 +183,7 @@ const TicketDetail = () => {
   const [savingAppointment, setSavingAppointment] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+  const [selectedSlotIdx, setSelectedSlotIdx] = useState(null);
   const locationDebounceRef = useRef(null);
   const locationWrapperRef = useRef(null);
 
@@ -284,23 +286,49 @@ const TicketDetail = () => {
     }
   };
 
-  const handleSaveAppointment = async () => {
-    if (!appointmentDate || !appointmentTime || !appointmentLocation) return;
+  const handleSlotClick = (slot, idx) => {
+    setSelectedSlotIdx(idx);
+    const parsed = parseSlotText(slot);
+    if (parsed) {
+      setAppointmentDate(parsed.date);
+      setAppointmentTime(parsed.time);
+      if (parsed.location) {
+        setAppointmentLocation(parsed.location);
+        setAppointmentCoords(null);
+      }
+    }
+  };
+
+  const handleConfirmAppointment = async () => {
+    if (!appointmentDate || !appointmentTime) {
+      toast.error('Data e ora sono obbligatori');
+      return;
+    }
+    const localDt = new Date(`${appointmentDate}T${appointmentTime}:00`);
+    if (Number.isNaN(localDt.getTime())) {
+      toast.error('Data/ora non valida');
+      return;
+    }
+    if (localDt.getTime() < Date.now() - 5 * 60 * 1000) {
+      toast.error('L\'appuntamento deve essere nel futuro');
+      return;
+    }
     setSavingAppointment(true);
     try {
-      const dateObj = new Date(appointmentDate);
-      const days = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
-      const months = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
-      const formatted = `${days[dateObj.getUTCDay()]} ${dateObj.getUTCDate()} ${months[dateObj.getUTCMonth()]} · ${appointmentTime} · ${appointmentLocation}`;
-      const payload = { appointment: formatted };
-      if (appointmentCoords) {
-        payload.appointment_lat = appointmentCoords.lat;
-        payload.appointment_lng = appointmentCoords.lng;
-      }
-      await axios.post(`${BACKEND}/tickets/${id}/appointment`, payload);
+      const payload = {
+        scheduled_at: localDt.toISOString(),
+        location: appointmentLocation || null,
+        lat: appointmentCoords?.lat ?? null,
+        lng: appointmentCoords?.lng ?? null,
+      };
+      await axios.post(
+        `${BACKEND}/tickets/${id}/confirm-appointment?user_id=${user.id}`,
+        payload,
+      );
+      toast.success('Appuntamento confermato');
       await fetchData();
     } catch (err) {
-      console.error('Error saving appointment:', err);
+      toast.error(err.response?.data?.detail || 'Errore nella conferma dell\'appuntamento');
     } finally {
       setSavingAppointment(false);
     }
@@ -341,18 +369,6 @@ const handleAddAttachments = async (files) => {
       setUploading(false);
     }
   };
-  const handleCloseTechnician = async () => {
-    try {
-      await axios.post(`${BACKEND}/tickets/${id}/close`, {
-        documents: ['Fattura.pdf', 'Foto_intervento.jpg', 'Cert_omologazione.pdf']
-      });
-      await fetchData();
-      navigate('/technician/dashboard');
-    } catch (error) {
-      console.error('Error closing ticket:', error);
-    }
-  };
-
   if (!ticket || !yacht) {
     return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>;
   }
@@ -657,12 +673,41 @@ const handleAddAttachments = async (files) => {
           </Button>
         )}
 
-        {ticket.status === 'assegnato' && user.role === 'technician' && !ticket.appointment && (
-          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6">
+        {/* Owner: Scegli appuntamento (status=pagato + proposed_slots) */}
+        {ticket.status === 'pagato' && user.role === 'owner' && ticket.proposed_slots?.length > 0 && (
+          <div className="bg-white border-2 border-[#1D9E75] rounded-lg shadow-sm p-6 mb-6">
             <h3 className="text-lg font-semibold text-[#0A2342] mb-4 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-[#1D9E75]" />
-              Imposta appuntamento
+              Scegli l'appuntamento
             </h3>
+            <p className="text-sm text-slate-600 mb-4">
+              Il tecnico ha proposto queste disponibilità. Clicca su uno slot per pre-compilare
+              data, ora e luogo, poi modifica se serve e conferma. L'appuntamento deve essere nel
+              futuro.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+              {ticket.proposed_slots.map((slot, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => handleSlotClick(slot, idx)}
+                  className={`text-left p-3 border-2 rounded-lg transition-all ${
+                    selectedSlotIdx === idx
+                      ? 'border-[#1D9E75] bg-[#1D9E75]/5'
+                      : 'border-slate-200 bg-white hover:border-[#1D9E75]/50'
+                  }`}
+                >
+                  <span className="flex items-start gap-2 text-sm text-slate-700">
+                    <span className="shrink-0 mt-0.5 w-5 h-5 rounded-full bg-[#1D9E75]/10 text-[#1D9E75] text-xs font-semibold flex items-center justify-center">
+                      {idx + 1}
+                    </span>
+                    <span>{slot}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-[#0A2342] mb-1">Luogo intervento</label>
@@ -727,25 +772,40 @@ const handleAddAttachments = async (files) => {
                 </div>
               </div>
               <Button
-                onClick={handleSaveAppointment}
-                disabled={savingAppointment || !appointmentDate || !appointmentTime || !appointmentLocation}
-                className="w-full bg-[#0A2342] hover:bg-[#0A2342]/90 text-white font-medium"
+                onClick={handleConfirmAppointment}
+                disabled={savingAppointment || !appointmentDate || !appointmentTime}
+                className="w-full bg-[#0A2342] hover:bg-[#0A2342]/90 text-white font-medium h-12"
               >
-                {savingAppointment ? 'Salvataggio...' : 'Conferma appuntamento'}
+                {savingAppointment ? 'Conferma in corso...' : 'Conferma appuntamento'}
               </Button>
             </div>
           </div>
         )}
 
-        {ticket.status === 'assegnato' && user.role === 'technician' && (
-          <Button
-            data-testid="close-intervention-button"
-            onClick={handleCloseTechnician}
-            className="w-full h-14 bg-[#1D9E75] hover:bg-[#1D9E75]/90 text-white text-lg font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
-          >
-            <CheckCircle className="w-5 h-5 mr-2" />
-            Chiudi Intervento
-          </Button>
+        {/* Owner: In attesa proposta tecnico (status=pagato, nessuno slot proposto ancora) */}
+        {ticket.status === 'pagato' && user.role === 'owner' &&
+          (!ticket.proposed_slots || ticket.proposed_slots.length === 0) && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg shadow-sm p-6 mb-6">
+            <h3 className="text-lg font-semibold text-[#0A2342] mb-2 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-amber-600" />
+              In attesa della proposta del tecnico
+            </h3>
+            <p className="text-amber-700 text-sm">
+              Il tecnico proporrà a breve delle fasce orarie disponibili. Riceverai una notifica
+              appena saranno pronte.
+            </p>
+          </div>
+        )}
+
+        {/* Appuntamento confermato (readonly, status=confermato o eseguito) */}
+        {(ticket.status === 'confermato' || ticket.status === 'eseguito') && ticket.appointment && (
+          <div className="bg-green-50 border-2 border-green-500 rounded-lg shadow-sm p-6 mb-6">
+            <h3 className="text-lg font-semibold text-green-800 mb-2 flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              Appuntamento confermato
+            </h3>
+            <p className="text-green-700">{formatAppointment(ticket.appointment)}</p>
+          </div>
         )}
 
         {ticket.status === 'chiuso' && (

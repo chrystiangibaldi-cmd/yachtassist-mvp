@@ -15,6 +15,7 @@ import OnboardingYacht from '@/pages/OnboardingYacht';
 import TechnicianTicketDetail from '@/pages/TechnicianTicketDetail';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
+import { Toaster } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://yachtassist-mvp-production.up.railway.app';
 export const API = `${BACKEND_URL}/api`;
@@ -86,6 +87,7 @@ function App() {
 
   return (
     <UserContext.Provider value={{ user, token, login, logout }}>
+      <Toaster position="top-right" richColors closeButton />
       <BrowserRouter>
         <Routes>
           {/* Redirect root to login */}

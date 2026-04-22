@@ -3,8 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { UserContext, API } from '@/App';
 import { Button } from '@/components/ui/button';
-import { Anchor, ArrowLeft, CheckCircle, FileText, Calendar, Euro, MapPin, Send, Plus, Trash2, Upload, X } from 'lucide-react';
+import { Anchor, ArrowLeft, CheckCircle, FileText, Calendar, Euro, MapPin, Send, Plus, Trash2, Upload, X, Edit3 } from 'lucide-react';
 import { formatAppointment } from '@/utils/appointment';
+import { toast } from 'sonner';
 
 const TechnicianTicketDetail = () => {
   const navigate = useNavigate();
@@ -21,9 +22,20 @@ const TechnicianTicketDetail = () => {
   const [quoteSuccess, setQuoteSuccess] = useState(false);
   const [quotePdf, setQuotePdf] = useState(null); // { name, data (base64) }
 
+  // Propose-appointment form state
+  const [slotInputs, setSlotInputs] = useState(['']);
+  const [isEditingProposal, setIsEditingProposal] = useState(false);
+  const [submittingProposal, setSubmittingProposal] = useState(false);
+
   useEffect(() => {
     fetchData();
   }, [id]);
+
+  useEffect(() => {
+    if (ticket?.proposed_slots && ticket.proposed_slots.length > 0) {
+      setSlotInputs(ticket.proposed_slots);
+    }
+  }, [ticket?.proposed_slots]);
 
   const fetchData = async () => {
     try {
@@ -137,6 +149,51 @@ const TechnicianTicketDetail = () => {
       setQuoteError(err.response?.data?.detail || 'Errore nell\'invio del preventivo');
     } finally {
       setSubmittingQuote(false);
+    }
+  };
+
+  const addSlotInput = () => {
+    if (slotInputs.length >= 5) return;
+    setSlotInputs([...slotInputs, '']);
+  };
+
+  const removeSlotInput = (idx) => {
+    if (slotInputs.length <= 1) {
+      setSlotInputs(['']);
+      return;
+    }
+    setSlotInputs(slotInputs.filter((_, i) => i !== idx));
+  };
+
+  const updateSlotInput = (idx, value) => {
+    const updated = [...slotInputs];
+    updated[idx] = value;
+    setSlotInputs(updated);
+  };
+
+  const handleSubmitProposal = async () => {
+    const valid = slotInputs.map((s) => s.trim()).filter(Boolean);
+    if (valid.length === 0) {
+      toast.error('Inserisci almeno uno slot di disponibilità');
+      return;
+    }
+    if (valid.some((s) => s.length > 200)) {
+      toast.error('Ogni slot può essere al massimo 200 caratteri');
+      return;
+    }
+    setSubmittingProposal(true);
+    try {
+      await axios.post(
+        `${API}/tickets/${id}/propose-appointment?user_id=${user.id}`,
+        { slots: valid },
+      );
+      toast.success('Disponibilità proposta. In attesa di conferma dall\'armatore.');
+      setIsEditingProposal(false);
+      await fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Errore nell\'invio della proposta');
+    } finally {
+      setSubmittingProposal(false);
     }
   };
 
@@ -462,6 +519,125 @@ const TechnicianTicketDetail = () => {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Proponi disponibilità (visibile quando ticket pagato) */}
+        {ticket.status === 'pagato' && (
+          <div className="bg-white border-2 border-[#1D9E75] rounded-lg shadow-sm p-6 mb-6">
+            <h3 className="text-lg font-semibold text-[#0A2342] mb-4 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-[#1D9E75]" />
+              {ticket.proposed_slots?.length > 0 && !isEditingProposal
+                ? 'Disponibilità proposta'
+                : 'Proponi disponibilità'}
+            </h3>
+
+            {ticket.proposed_slots?.length > 0 && !isEditingProposal ? (
+              <>
+                <p className="text-sm text-slate-600 mb-3">
+                  In attesa che l'armatore confermi uno degli slot proposti.
+                </p>
+                <ul className="space-y-2 mb-4">
+                  {ticket.proposed_slots.map((slot, idx) => (
+                    <li
+                      key={idx}
+                      className="flex items-start gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700"
+                    >
+                      <span className="shrink-0 mt-0.5 w-5 h-5 rounded-full bg-[#1D9E75]/10 text-[#1D9E75] text-xs font-semibold flex items-center justify-center">
+                        {idx + 1}
+                      </span>
+                      <span>{slot}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  onClick={() => {
+                    setSlotInputs(ticket.proposed_slots);
+                    setIsEditingProposal(true);
+                  }}
+                  variant="outline"
+                  className="border-slate-200"
+                >
+                  <Edit3 className="w-4 h-4 mr-2" />
+                  Modifica proposta
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-slate-600 mb-4">
+                  Inserisci da 1 a 5 fasce orarie di disponibilità (testo libero, max 200 caratteri
+                  ciascuna). L'armatore sceglierà una e confermerà l'appuntamento.
+                </p>
+                <div className="space-y-3 mb-4">
+                  {slotInputs.map((slot, idx) => (
+                    <div key={idx} className="flex gap-2 items-start">
+                      <div className="flex-1">
+                        <label className="block text-xs font-medium text-slate-500 mb-1">
+                          Slot {idx + 1}
+                        </label>
+                        <input
+                          type="text"
+                          value={slot}
+                          maxLength={200}
+                          onChange={(e) => updateSlotInput(idx, e.target.value)}
+                          placeholder="es. Martedì 28/04 ore 9-12 Marina di Pisa pontile B"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeSlotInput(idx)}
+                        disabled={slotInputs.length === 1}
+                        className="mt-5 p-2 text-slate-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                        aria-label="Rimuovi slot"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={addSlotInput}
+                  disabled={slotInputs.length >= 5}
+                  className="flex items-center gap-1 text-sm text-[#1D9E75] font-medium hover:text-[#1D9E75]/80 disabled:opacity-40 disabled:cursor-not-allowed mb-4"
+                >
+                  <Plus className="w-4 h-4" /> Aggiungi slot ({slotInputs.length}/5)
+                </button>
+
+                <div className="flex gap-3">
+                  {isEditingProposal && (
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingProposal(false);
+                        setSlotInputs(ticket.proposed_slots || ['']);
+                      }}
+                      variant="outline"
+                      className="flex-1 border-slate-200"
+                      disabled={submittingProposal}
+                    >
+                      Annulla
+                    </Button>
+                  )}
+                  <Button
+                    onClick={handleSubmitProposal}
+                    disabled={submittingProposal}
+                    className="flex-1 bg-[#1D9E75] hover:bg-[#1D9E75]/90 text-white font-medium h-12"
+                  >
+                    {submittingProposal ? (
+                      'Invio in corso...'
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        {ticket.proposed_slots?.length > 0 ? 'Aggiorna proposta' : 'Invia proposta'}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         )}
 

@@ -66,3 +66,74 @@ export function formatAppointment(appointment, fallback = "Da concordare") {
   }
   return parts.join(" · ");
 }
+
+const MONTHS_IT = {
+  gennaio: "01", febbraio: "02", marzo: "03", aprile: "04",
+  maggio: "05", giugno: "06", luglio: "07", agosto: "08",
+  settembre: "09", ottobre: "10", novembre: "11", dicembre: "12",
+};
+
+const WEEKDAY_PREFIX = /^(luned[iì]|marted[iì]|mercoled[iì]|gioved[iì]|venerd[iì]|sabato|domenica)\s+/i;
+const SLASH_DATE_RE = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\s+(?:ore\s+)?(\d{1,2})(?::(\d{2}))?/i;
+const ITALIAN_DATE_RE = new RegExp(
+  `^(\\d{1,2})\\s+(${Object.keys(MONTHS_IT).join("|")})(?:\\s+(\\d{4}))?\\s+(?:ore\\s+)?(\\d{1,2})(?::(\\d{2}))?`,
+  "i",
+);
+
+/**
+ * Parser best-effort per il testo libero di uno slot proposto dal tecnico.
+ * Restituisce `{date, time, location}` se riesce a estrarre almeno data+ora,
+ * altrimenti `null` (fallback: l'owner compila manualmente).
+ *
+ * Formati supportati:
+ *   - "28/04 9-12" / "28/04 ore 9-12" / "28/04/2026 9:30"
+ *   - "Martedì 28/04 9:30" (il giorno della settimana viene ignorato)
+ *   - "28 aprile 2026 14:00" (mese in italiano)
+ * Formati non supportati ritornano `null` (es. "09:00-12:00" senza data,
+ * "venerdì prossimo pomeriggio").
+ *
+ * @param {string} text
+ * @returns {{date: string, time: string, location: string} | null}
+ *          date in formato `YYYY-MM-DD`, time in formato `HH:mm`, location è
+ *          ciò che resta dopo la data/ora (senza range `-12` residuo).
+ */
+export function parseSlotText(text) {
+  if (typeof text !== "string") return null;
+  const input = text.trim();
+  if (!input) return null;
+
+  const stripped = input.replace(WEEKDAY_PREFIX, "");
+  const currentYear = new Date().getUTCFullYear();
+
+  let date;
+  let time;
+  let matchedLength;
+
+  const slashMatch = stripped.match(SLASH_DATE_RE);
+  if (slashMatch) {
+    const [whole, dd, mm, yy, hh, min] = slashMatch;
+    const year = yy ? (yy.length === 2 ? `20${yy}` : yy) : String(currentYear);
+    date = `${year}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
+    time = `${hh.padStart(2, "0")}:${(min || "00").padStart(2, "0")}`;
+    matchedLength = whole.length;
+  } else {
+    const itMatch = stripped.match(ITALIAN_DATE_RE);
+    if (!itMatch) return null;
+    const [whole, dd, monthName, yy, hh, min] = itMatch;
+    const monthKey = monthName.toLowerCase();
+    const month = MONTHS_IT[monthKey];
+    if (!month) return null;
+    const year = yy || String(currentYear);
+    date = `${year}-${month}-${dd.padStart(2, "0")}`;
+    time = `${hh.padStart(2, "0")}:${(min || "00").padStart(2, "0")}`;
+    matchedLength = whole.length;
+  }
+
+  if (Number.isNaN(new Date(`${date}T${time}:00`).getTime())) return null;
+
+  let rest = stripped.slice(matchedLength).trim();
+  rest = rest.replace(/^[-–]\s*\d{1,2}(?::\d{2})?/, "").trim();
+  rest = rest.replace(/^[,;:·\-\s]+/, "").trim();
+
+  return { date, time, location: rest };
+}
