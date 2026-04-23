@@ -32,7 +32,7 @@ const TechnicianTicketDetail = () => {
   }, [id]);
 
   useEffect(() => {
-    if (ticket?.proposed_slots && ticket.proposed_slots.length > 0) {
+    if (Array.isArray(ticket?.proposed_slots) && ticket.proposed_slots.length > 0) {
       setSlotInputs(ticket.proposed_slots);
     }
   }, [ticket?.proposed_slots]);
@@ -214,6 +214,7 @@ const TechnicianTicketDetail = () => {
   }
 
   const hasQuote = ticket.quote_items && ticket.quote_items.length > 0;
+  const proposedSlots = Array.isArray(ticket.proposed_slots) ? ticket.proposed_slots : [];
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -527,18 +528,18 @@ const TechnicianTicketDetail = () => {
           <div className="bg-white border-2 border-[#1D9E75] rounded-lg shadow-sm p-6 mb-6">
             <h3 className="text-lg font-semibold text-[#0A2342] mb-4 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-[#1D9E75]" />
-              {ticket.proposed_slots?.length > 0 && !isEditingProposal
+              {proposedSlots.length > 0 && !isEditingProposal
                 ? 'Disponibilità proposta'
                 : 'Proponi disponibilità'}
             </h3>
 
-            {ticket.proposed_slots?.length > 0 && !isEditingProposal ? (
+            {proposedSlots.length > 0 && !isEditingProposal ? (
               <>
                 <p className="text-sm text-slate-600 mb-3">
                   In attesa che l'armatore confermi uno degli slot proposti.
                 </p>
                 <ul className="space-y-2 mb-4">
-                  {ticket.proposed_slots.map((slot, idx) => (
+                  {proposedSlots.map((slot, idx) => (
                     <li
                       key={idx}
                       className="flex items-start gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700"
@@ -552,7 +553,7 @@ const TechnicianTicketDetail = () => {
                 </ul>
                 <Button
                   onClick={() => {
-                    setSlotInputs(ticket.proposed_slots);
+                    setSlotInputs(proposedSlots);
                     setIsEditingProposal(true);
                   }}
                   variant="outline"
@@ -612,7 +613,7 @@ const TechnicianTicketDetail = () => {
                       type="button"
                       onClick={() => {
                         setIsEditingProposal(false);
-                        setSlotInputs(ticket.proposed_slots || ['']);
+                        setSlotInputs(proposedSlots.length > 0 ? proposedSlots : ['']);
                       }}
                       variant="outline"
                       className="flex-1 border-slate-200"
@@ -631,7 +632,7 @@ const TechnicianTicketDetail = () => {
                     ) : (
                       <>
                         <Send className="w-4 h-4 mr-2" />
-                        {ticket.proposed_slots?.length > 0 ? 'Aggiorna proposta' : 'Invia proposta'}
+                        {proposedSlots.length > 0 ? 'Aggiorna proposta' : 'Invia proposta'}
                       </>
                     )}
                   </Button>

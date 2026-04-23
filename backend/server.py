@@ -147,7 +147,7 @@ class Ticket(BaseModel):
     technician_payment: Optional[int] = None
     marina: str
     appointment: Optional[Appointment] = None
-    proposed_slots: Optional[List[str]] = None
+    proposed_slots: List[str] = Field(default_factory=list)
     appointment_lat: Optional[float] = None  # DEPRECATED, rimuovere in commit 5d dopo rollout completo
     appointment_lng: Optional[float] = None  # DEPRECATED, rimuovere in commit 5d dopo rollout completo
     documents: List[str] = []
@@ -165,6 +165,13 @@ class Ticket(BaseModel):
             if v.strip():
                 return {"datetime": None, "location": v, "lat": None, "lng": None}
             return None
+        return v
+
+    @field_validator("proposed_slots", mode="before")
+    @classmethod
+    def _coerce_legacy_proposed_slots(cls, v):
+        if v is None:
+            return []
         return v
 
 

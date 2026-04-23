@@ -383,6 +383,7 @@ const handleAddAttachments = async (files) => {
   };
 
   const statusSteps = getStatusSteps();
+  const proposedSlots = Array.isArray(ticket.proposed_slots) ? ticket.proposed_slots : [];
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -674,7 +675,7 @@ const handleAddAttachments = async (files) => {
         )}
 
         {/* Owner: Scegli appuntamento (status=pagato + proposed_slots) */}
-        {ticket.status === 'pagato' && user.role === 'owner' && ticket.proposed_slots?.length > 0 && (
+        {ticket.status === 'pagato' && user.role === 'owner' && proposedSlots.length > 0 && (
           <div className="bg-white border-2 border-[#1D9E75] rounded-lg shadow-sm p-6 mb-6">
             <h3 className="text-lg font-semibold text-[#0A2342] mb-4 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-[#1D9E75]" />
@@ -687,7 +688,7 @@ const handleAddAttachments = async (files) => {
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-              {ticket.proposed_slots.map((slot, idx) => (
+              {proposedSlots.map((slot, idx) => (
                 <button
                   key={idx}
                   type="button"
@@ -783,8 +784,7 @@ const handleAddAttachments = async (files) => {
         )}
 
         {/* Owner: In attesa proposta tecnico (status=pagato, nessuno slot proposto ancora) */}
-        {ticket.status === 'pagato' && user.role === 'owner' &&
-          (!ticket.proposed_slots || ticket.proposed_slots.length === 0) && (
+        {ticket.status === 'pagato' && user.role === 'owner' && proposedSlots.length === 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg shadow-sm p-6 mb-6">
             <h3 className="text-lg font-semibold text-[#0A2342] mb-2 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-amber-600" />
