@@ -663,14 +663,14 @@ const handleAddAttachments = async (files) => {
     </div>
   </div>
 )}
-        {ticket.status === 'assegnato' && user.role === 'owner' && !showPayment && (
+        {ticket.status === 'assegnato' && user.role === 'owner' && !showPayment && ticket.final_price && (
           <Button
             data-testid="close-ticket-button"
             onClick={() => setShowPayment(true)}
             className="w-full h-14 bg-[#1D9E75] hover:bg-[#1D9E75]/90 text-white text-lg font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
           >
             <CreditCard className="w-5 h-5 mr-2" />
-            Paga e Chiudi Ticket · €{ticket.final_price}
+            Paga intervento · €{ticket.final_price}
           </Button>
         )}
 
