@@ -643,7 +643,7 @@ const TechnicianTicketDetail = () => {
         )}
 
         {/* Chiudi Intervento */}
-        {ticket.status === 'assegnato' && (
+        {ticket.status === 'confermato' && (
           <Button
             data-testid="close-intervention-button"
             onClick={handleCloseIntervention}

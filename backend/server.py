@@ -753,13 +753,35 @@ async def submit_quote(ticket_id: str, request: SubmitQuoteRequest):
     return {"success": True, "total": total}
 
 @api_router.post("/tickets/{ticket_id}/close")
-async def close_ticket(ticket_id: str, request: CloseTicketRequest):
+async def close_ticket(
+    ticket_id: str,
+    request: CloseTicketRequest,
+    user_id: str,
+):
+    ticket = await db.tickets.find_one({"id": ticket_id}, {"_id": 0})
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket non trovato")
+
+    if ticket.get("technician_id") != user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Solo il tecnico assegnato può chiudere l'intervento",
+        )
+
+    if ticket["status"] == "chiuso":
+        return {"success": True}
+
+    if ticket["status"] != "confermato":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Impossibile chiudere: il ticket deve essere in stato confermato (attuale: {ticket['status']})",
+        )
+
     result = await db.tickets.update_one(
         {"id": ticket_id},
         {"$set": {"status": "chiuso", "documents": request.documents}}
     )
     if result.modified_count > 0:
-        ticket = await db.tickets.find_one({"id": ticket_id}, {"_id": 0})
         await db.yachts.update_one({"id": ticket["yacht_id"]}, {"$set": {"compliance_score": 100}})
     return {"success": True}
     
