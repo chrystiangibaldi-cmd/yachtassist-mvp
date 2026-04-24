@@ -1,12 +1,105 @@
 // v3.1 - 21 categories
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, ArrowLeft, ArrowRight, CheckCircle, Upload, MapPin, Star, AlertCircle, Sparkles } from 'lucide-react';
+import { GoogleMap, useLoadScript } from '@react-google-maps/api';
+import AdvancedMarker from '@/components/AdvancedMarker';
 
 const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
+
+const libraries = ['places', 'marker'];
+
+const mapContainerStyle = {
+  width: '100%',
+  height: '200px',
+  borderRadius: '0.5rem',
+};
+
+const PlacesAutocomplete = ({ onSelect, value, onChange }) => {
+  const [suggestions, setSuggestions] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const debounceRef = useRef(null);
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const fetchSuggestions = useCallback(async (input) => {
+    if (!input || input.length < 2 || !window.google?.maps?.places?.AutocompleteSuggestion) {
+      setSuggestions([]);
+      return;
+    }
+    try {
+      const { suggestions: results } = await google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+        input,
+        includedPrimaryTypes: ['marina'],
+      });
+      setSuggestions(results || []);
+      setShowDropdown((results || []).length > 0);
+    } catch (err) {
+      console.error('AutocompleteSuggestion error:', err);
+      setSuggestions([]);
+    }
+  }, []);
+
+  const handleInput = (e) => {
+    const val = e.target.value;
+    onChange(val);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchSuggestions(val), 300);
+  };
+
+  const handleSelect = async (suggestion) => {
+    const text = suggestion.placePrediction.text.text;
+    onChange(text);
+    setSuggestions([]);
+    setShowDropdown(false);
+    try {
+      const place = suggestion.placePrediction.toPlace();
+      await place.fetchFields({ fields: ['location'] });
+      const loc = place.location;
+      onSelect({ name: text, lat: loc.lat(), lng: loc.lng() });
+    } catch (err) {
+      console.error('Error fetching place location:', err);
+    }
+  };
+
+  return (
+    <div className="relative" ref={wrapperRef}>
+      <input
+        type="text"
+        value={value}
+        onChange={handleInput}
+        onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
+        placeholder="es. Marina di Pisa"
+        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
+      />
+      {showDropdown && suggestions.length > 0 && (
+        <ul className="absolute z-50 w-full bg-white border border-slate-200 rounded-lg mt-1 shadow-lg max-h-60 overflow-y-auto">
+          {suggestions.map((s, i) => (
+            <li
+              key={s.placePrediction.placeId || i}
+              onClick={() => handleSelect(s)}
+              className="px-4 py-2 hover:bg-slate-50 cursor-pointer text-sm text-slate-700 border-b border-slate-100 last:border-b-0"
+            >
+              {s.placePrediction.text.text}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
 
 const RequestIntervention = () => {
   const navigate = useNavigate();
@@ -15,10 +108,13 @@ const RequestIntervention = () => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     category: '',
+    categoryId: '',
     description: '',
     photos: [],
     urgency: 'normale',
     marina: 'Marina di Pisa',
+    marina_lat: null,
+    marina_lng: null,
     selectedTechnician: null
   });
   const [technicians, setTechnicians] = useState([]);
@@ -28,6 +124,22 @@ const RequestIntervention = () => {
   const [aiResult, setAiResult] = useState(null);
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [selectedSubcategories, setSelectedSubcategories] = useState([]);
+  const [marinaCoords, setMarinaCoords] = useState(null);
+
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '',
+    libraries,
+  });
+
+  const handleMarinaPlaceSelect = useCallback(({ name, lat, lng }) => {
+    setFormData(prev => ({ ...prev, marina: name, marina_lat: lat, marina_lng: lng }));
+    setMarinaCoords({ lat, lng });
+  }, []);
+
+  const handleMarinaTextChange = useCallback((value) => {
+    setFormData(prev => ({ ...prev, marina: value, marina_lat: null, marina_lng: null }));
+    setMarinaCoords(null);
+  }, []);
 
   const categories = [
     { id: 'motore', icon: '⚙️', name: 'Motore & Propulsione', subcategories: ['Guasto/Avaria Motore - EB', 'Guasto/Avaria Motore - FB', 'Guasto/Avaria Motore - EFB', 'Guasto/Avaria Motore - IPS', 'Guasto/Avaria Motore - POD', 'Pezzi di ricambio', 'Tagliando Motore - ORD', 'Tagliando Motore - STR', 'Avaria/Guasto Generatore', 'Tagliando Generatore', 'Elica e asse', 'Piede poppiero', 'Fuoribordo'] },
@@ -61,10 +173,12 @@ const RequestIntervention = () => {
 
   const fetchTechnicians = async () => {
     try {
-      const categoryId = categories.find(c => c.name === formData.category)?.id;
-      const url = categoryId
-        ? `${BACKEND}/technicians/available?category=${categoryId}`
-        : `${BACKEND}/technicians/available`;
+      const params = new URLSearchParams();
+      if (formData.categoryId) params.set('category', formData.categoryId);
+      if (formData.marina_lat != null) params.set('marina_lat', formData.marina_lat);
+      if (formData.marina_lng != null) params.set('marina_lng', formData.marina_lng);
+      const qs = params.toString();
+      const url = qs ? `${BACKEND}/technicians/available?${qs}` : `${BACKEND}/technicians/available`;
       const response = await axios.get(url);
       setTechnicians(response.data);
     } catch (err) {
@@ -74,7 +188,7 @@ const RequestIntervention = () => {
 
   const handleCategorySelect = (category) => {
     if (category.isEmergency) {
-      setFormData(prev => ({ ...prev, category: category.name, urgency: 'emergenza' }));
+      setFormData(prev => ({ ...prev, category: category.name, categoryId: category.id, urgency: 'emergenza' }));
       setStep(2);
       return;
     }
@@ -90,7 +204,7 @@ const handleSubcategoryConfirm = () => {
     const subLabel = selectedSubcategories.length > 0
       ? ` — ${selectedSubcategories.join(', ')}`
       : '';
-    setFormData(prev => ({ ...prev, category: expandedCategory.name + subLabel }));
+    setFormData(prev => ({ ...prev, category: expandedCategory.name + subLabel, categoryId: expandedCategory.id }));
     setStep(2);
   };
 
@@ -149,6 +263,8 @@ const handleSubcategoryConfirm = () => {
         description: formData.description,
         urgency: formData.urgency,
         marina: formData.marina,
+        marina_lat: formData.marina_lat,
+        marina_lng: formData.marina_lng,
         photos: formData.photos
       });
       const ticket = response.data.ticket;
@@ -447,13 +563,40 @@ const handleSubcategoryConfirm = () => {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-[#0A2342] mb-2">Porto / Marina</label>
-                <input
-                  type="text"
-                  value={formData.marina}
-                  onChange={(e) => setFormData({ ...formData, marina: e.target.value })}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
-                />
+                {isLoaded ? (
+                  <PlacesAutocomplete
+                    value={formData.marina}
+                    onChange={handleMarinaTextChange}
+                    onSelect={handleMarinaPlaceSelect}
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={formData.marina}
+                    onChange={(e) => handleMarinaTextChange(e.target.value)}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
+                  />
+                )}
+                {!formData.marina_lat && formData.marina && (
+                  <p className="text-xs text-amber-600 mt-1">Seleziona dalla lista per abilitare il calcolo distanza tecnici</p>
+                )}
               </div>
+              {isLoaded && marinaCoords && (
+                <div className="rounded-lg overflow-hidden border border-slate-200">
+                  <GoogleMap
+                    mapContainerStyle={mapContainerStyle}
+                    center={marinaCoords}
+                    zoom={14}
+                    options={{
+                      mapId: 'DEMO_MAP_ID',
+                      disableDefaultUI: true,
+                      zoomControl: true,
+                    }}
+                  >
+                    <AdvancedMarker position={marinaCoords} />
+                  </GoogleMap>
+                </div>
+              )}
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-6">
                 <h3 className="font-semibold text-[#0A2342] mb-4">Riepilogo richiesta</h3>
                 <div className="space-y-2 text-sm">
@@ -503,6 +646,12 @@ const handleSubcategoryConfirm = () => {
               {isEmergency ? '🚨 Il primo tecnico che accetta prende il lavoro' : `Tecnici specializzati in ${formData.category}`}
             </p>
             <div className="space-y-4">
+              {filteredTechnicians.length === 0 && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-8 text-center">
+                  <p className="text-slate-600">Nessun tecnico disponibile per questa categoria.</p>
+                  <p className="text-sm text-slate-500 mt-1">Torna indietro e prova a selezionare una categoria diversa.</p>
+                </div>
+              )}
               {filteredTechnicians.map((tech) => (
                 <div
                   key={tech.id}
@@ -525,7 +674,7 @@ const handleSubcategoryConfirm = () => {
                           <span className="font-medium">{tech.specialization}</span>
                           <span className="flex items-center gap-1">
                             <MapPin className="w-4 h-4" />
-                            {tech.location} {tech.distance}
+                            {tech.location}{tech.distance_km != null ? ` · ${tech.distance_km} km` : ''}
                           </span>
                           {tech.rating > 0 && (
                             <span className="flex items-center gap-1 font-medium text-amber-600">

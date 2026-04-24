@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, ConfigDict, EmailStr, field_validator
 from typing import List, Optional, Literal, Any
 from datetime import datetime, timezone, timedelta
 from datetime import datetime as _dt  # alias per annotazioni che altrimenti sarebbero shadowate dal nome di campo `datetime`
+from math import radians, sin, cos, sqrt, atan2
 import uuid
 from .auth import hash_password, verify_password, create_access_token
 from .payments import payments_router, set_db, calculate_commission
@@ -72,6 +73,18 @@ async def send_email_notification(to_email: str, subject: str, html_content: str
         logging.error(f"Failed to send email to {to_email}: {str(e)}")
         return None
 
+def haversine_km(lat1, lng1, lat2, lng2):
+    """Distanza in km tra due coordinate. Ritorna None se uno dei 4 valori e' None/falsy."""
+    if not all([lat1, lng1, lat2, lng2]):
+        return None
+    R = 6371.0
+    lat1r, lng1r, lat2r, lng2r = map(radians, [lat1, lng1, lat2, lng2])
+    dlat = lat2r - lat1r
+    dlng = lng2r - lng1r
+    a = sin(dlat/2)**2 + cos(lat1r) * cos(lat2r) * sin(dlng/2)**2
+    return round(2 * R * atan2(sqrt(a), sqrt(1-a)), 1)
+
+
 # Models
 class User(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -115,6 +128,9 @@ class TechnicianProfile(BaseModel):
     rating: float
     eco_certified: bool = False
     avatar_url: Optional[str] = None
+    marina_lat: Optional[float] = None
+    marina_lng: Optional[float] = None
+    distance_km: Optional[float] = None
 
 class QuoteItem(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -185,6 +201,8 @@ class CreateTicketRequest(BaseModel):
     description: str
     urgency: Literal["normale", "urgente", "emergenza"]
     marina: str
+    marina_lat: Optional[float] = None
+    marina_lng: Optional[float] = None
     photos: Optional[List[Attachment]] = []
 
 class LoginRequest(BaseModel):
@@ -410,7 +428,9 @@ async def seed_data(force_reset=False):
             "distance": "8km",
             "rating": 4.9,
             "eco_certified": True,
-            "avatar_url": "https://images.unsplash.com/photo-1517524206127-48bbd363f3d7?w=200&h=200&fit=crop"
+            "avatar_url": "https://images.unsplash.com/photo-1517524206127-48bbd363f3d7?w=200&h=200&fit=crop",
+            "marina_lat": 43.5513,
+            "marina_lng": 10.3080
         }
     ]
     for profile in technician_profiles:
@@ -593,13 +613,36 @@ async def get_yacht(yacht_id: str):
     return Yacht(**yacht)
 
 @api_router.get("/technicians/available", response_model=List[TechnicianProfile])
-async def get_available_technicians(category: Optional[str] = None):
+async def get_available_technicians(
+    category: Optional[str] = None,
+    marina_lat: Optional[float] = None,
+    marina_lng: Optional[float] = None,
+):
     profiles = await db.technician_profiles.find({}, {"_id": 0}).to_list(100)
+
+    # Filtro categoria: hide (non riordino) se category specificata
     if category:
-        # Specializzati prima, generici in fondo
-        specialized = [p for p in profiles if category in p.get("specializations", [])]
-        others = [p for p in profiles if category not in p.get("specializations", [])]
-        profiles = specialized + others
+        profiles = [p for p in profiles if category in p.get("specializations", [])]
+
+    # Calcolo distanza Haversine (None se manca lat/lng da un lato)
+    for p in profiles:
+        p["distance_km"] = haversine_km(
+            p.get("marina_lat"), p.get("marina_lng"), marina_lat, marina_lng
+        )
+
+    def sort_key(p):
+        match_score = 1 if (category and category in p.get("specializations", [])) else 0
+        rating = p.get("rating") or 0
+        has_rating = 1 if rating > 0 else 0
+        distance = p.get("distance_km") if p.get("distance_km") is not None else 9999
+        created = p.get("created_at") or ""
+        try:
+            ts = _dt.fromisoformat(created.replace("Z", "+00:00")).timestamp() if created else 0
+        except (ValueError, AttributeError):
+            ts = 0
+        return (-match_score, -has_rating, -rating, distance, -ts)
+
+    profiles = sorted(profiles, key=sort_key)[:100]
     return [TechnicianProfile(**p) for p in profiles]
 
 @api_router.get("/tickets/{ticket_id}", response_model=Ticket)
@@ -656,7 +699,8 @@ async def create_generic_ticket(request: CreateTicketRequest, user_id: str):
         "description": request.description, "photos": [p.dict() for p in request.photos] if request.photos else [],
         "price_min": 100, "price_max": 500, "final_price": None,
         "commission": None, "technician_payment": None,
-        "marina": request.marina, "appointment": None, "documents": [],
+        "marina": request.marina, "marina_lat": request.marina_lat, "marina_lng": request.marina_lng,
+        "appointment": None, "documents": [],
         "quote_items": None, "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.tickets.insert_one(ticket_doc)

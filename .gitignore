@@ -81,3 +81,6 @@ android-sdk/ -e
 # Environment files
 *.env
 *.env.*
+
+# Local prompt drafts (notepad workflow, non commitabili)
+prompt_*.txt
