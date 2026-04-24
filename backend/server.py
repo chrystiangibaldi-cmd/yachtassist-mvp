@@ -377,8 +377,8 @@ async def seed_data(force_reset=False):
             "model": "Sanlorenzo 50",
             "owner_id": "owner-1",
             "marina": "Marina di Pisa",
-            "marina_lat": 43.6826,
-            "marina_lng": 10.3929,
+            "marina_lat": 43.6723848,
+            "marina_lng": 10.2754365,
             "category": "Motore",
             "distance": "12 miglia",
             "compliance_score": 67,
@@ -390,8 +390,8 @@ async def seed_data(force_reset=False):
             "model": "Azimut 40",
             "owner_id": "beta-1",
             "marina": "Marina di Livorno",
-            "marina_lat": 43.5513,
-            "marina_lng": 10.3080,
+            "marina_lat": 43.548476,
+            "marina_lng": 10.3106087,
             "category": "Motore",
             "distance": "",
             "compliance_score": 0,
@@ -433,8 +433,8 @@ async def seed_data(force_reset=False):
             "rating": 4.9,
             "eco_certified": True,
             "avatar_url": "https://images.unsplash.com/photo-1517524206127-48bbd363f3d7?w=200&h=200&fit=crop",
-            "marina_lat": 43.5513,
-            "marina_lng": 10.3080
+            "marina_lat": 43.548476,
+            "marina_lng": 10.3106087
         }
     ]
     for profile in technician_profiles:
