@@ -84,3 +84,7 @@ android-sdk/ -e
 
 # Local prompt drafts (notepad workflow, non commitabili)
 prompt_*.txt
+
+# Local ops scripts (one-shot Mongo tools, non commitabili)
+scripts/cleanup_*.py
+scripts/inspect_*.py

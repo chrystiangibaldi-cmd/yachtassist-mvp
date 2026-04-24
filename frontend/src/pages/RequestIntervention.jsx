@@ -112,7 +112,7 @@ const RequestIntervention = () => {
     description: '',
     photos: [],
     urgency: 'normale',
-    marina: 'Marina di Pisa',
+    marina: '',
     marina_lat: null,
     marina_lng: null,
     selectedTechnician: null
@@ -164,6 +164,28 @@ const RequestIntervention = () => {
     { id: 'posti_barca', icon: '🅿️', name: 'Posti Barca', subcategories: ['Ormeggio temporaneo', 'Ormeggio stagionale', 'Posto barca annuale', 'Cambio posto', 'Assistenza ormeggio'] },
     { id: 'emergenza', icon: '🚨', name: 'EMERGENZA', isEmergency: true, subcategories: [] },
 ];
+
+  useEffect(() => {
+    if (!user?.id) return;
+    axios.get(`${BACKEND}/dashboard/owner?user_id=${user.id}`)
+      .then(res => {
+        const yacht = res.data?.yacht;
+        if (!yacht?.marina) return;
+        setFormData(prev => {
+          if (prev.marina !== '') return prev;
+          if (yacht.marina_lat != null && yacht.marina_lng != null) {
+            setMarinaCoords({ lat: yacht.marina_lat, lng: yacht.marina_lng });
+          }
+          return {
+            ...prev,
+            marina: yacht.marina,
+            marina_lat: yacht.marina_lat ?? null,
+            marina_lng: yacht.marina_lng ?? null,
+          };
+        });
+      })
+      .catch(err => console.error('Dashboard fetch for pre-pop failed:', err));
+  }, [user?.id]);
 
   useEffect(() => {
     if (step === 4) {
