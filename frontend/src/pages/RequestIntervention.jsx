@@ -162,7 +162,6 @@ const RequestIntervention = () => {
     { id: 'verniciatore', icon: '🖌️', name: 'Verniciatore & Lucidatore', subcategories: ['Verniciatura gelcoat', 'Verniciatura smalto', 'Verniciatura vetroresina', 'Verniciatura metalli', 'Lucidatura gelcoat', 'Touch-up e ritocchi', 'Verniciatura interna legno', 'Pittore nome nave', 'Nano tecnologie'] },
     { id: 'lavanderia', icon: '👕', name: 'Lavanderia', subcategories: ['Pick-up biancheria', 'Roll-in / Roll-out', 'Lavaggio tappezzerie', 'Lavaggio moquettes'] },
     { id: 'posti_barca', icon: '🅿️', name: 'Posti Barca', subcategories: ['Ormeggio temporaneo', 'Ormeggio stagionale', 'Posto barca annuale', 'Cambio posto', 'Assistenza ormeggio'] },
-    { id: 'emergenza', icon: '🚨', name: 'EMERGENZA', isEmergency: true, subcategories: [] },
 ];
 
   useEffect(() => {
@@ -209,11 +208,6 @@ const RequestIntervention = () => {
   };
 
   const handleCategorySelect = (category) => {
-    if (category.isEmergency) {
-      setFormData(prev => ({ ...prev, category: category.name, categoryId: category.id, urgency: 'emergenza' }));
-      setStep(2);
-      return;
-    }
     if (expandedCategory?.id === category.id) {
       setExpandedCategory(null);
     } else {
@@ -303,11 +297,7 @@ const handleSubcategoryConfirm = () => {
     }
   };
 
-  const selectedCategory = categories.find(c => c.name === formData.category);
-  const isEmergency = selectedCategory?.isEmergency;
-  const filteredTechnicians = isEmergency
-    ? technicians
-    : technicians; // ordinamento già fatto dal backend (specializzati prima, altri in fondo)
+  const filteredTechnicians = technicians; // ordinamento già fatto dal backend (specializzati prima, altri in fondo)
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -353,13 +343,11 @@ const handleSubcategoryConfirm = () => {
     <p className="text-lg text-slate-600 mb-8">Che tipo di intervento ti serve?</p>
     <div className="grid grid-cols-2 gap-4">
       {categories.map((cat) => (
-        <div key={cat.id} className={`${cat.isEmergency ? 'col-span-2' : ''} ${expandedCategory?.id === cat.id ? 'col-span-2' : ''}`}>
+        <div key={cat.id} className={expandedCategory?.id === cat.id ? 'col-span-2' : ''}>
           <button
             onClick={() => handleCategorySelect(cat)}
             className={`w-full p-6 rounded-lg border-2 transition-all text-left ${
-              cat.isEmergency
-                ? 'border-red-600 bg-red-50 hover:bg-red-100 animate-pulse'
-                : expandedCategory?.id === cat.id
+              expandedCategory?.id === cat.id
                 ? 'border-[#1D9E75] bg-[#1D9E75]/5'
                 : 'border-slate-200 hover:border-[#1D9E75] hover:bg-slate-50'
             }`}
@@ -367,15 +355,13 @@ const handleSubcategoryConfirm = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <span className="text-4xl">{cat.icon}</span>
-                <h3 className={`text-lg font-semibold ${cat.isEmergency ? 'text-red-700' : 'text-[#0A2342]'}`}>
+                <h3 className="text-lg font-semibold text-[#0A2342]">
                   {cat.name}
                 </h3>
               </div>
-              {!cat.isEmergency && (
-                <span className="text-slate-400 text-xl">
-                  {expandedCategory?.id === cat.id ? '▲' : '▼'}
-                </span>
-              )}
+              <span className="text-slate-400 text-xl">
+                {expandedCategory?.id === cat.id ? '▲' : '▼'}
+              </span>
             </div>
           </button>
 
@@ -539,31 +525,38 @@ const handleSubcategoryConfirm = () => {
                 )}
               </div>
 
-              {!isEmergency && (
-                <div>
-                  <label className="block text-sm font-medium text-[#0A2342] mb-3">Urgenza</label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <button
-                      onClick={() => setFormData({ ...formData, urgency: 'normale' })}
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        formData.urgency === 'normale' ? 'border-[#1D9E75] bg-[#1D9E75]/10' : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <h4 className="font-semibold text-[#0A2342]">Normale (48h)</h4>
-                      <p className="text-sm text-slate-600 mt-1">Intervento programmabile</p>
-                    </button>
-                    <button
-                      onClick={() => setFormData({ ...formData, urgency: 'urgente' })}
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        formData.urgency === 'urgente' ? 'border-amber-500 bg-amber-50' : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <h4 className="font-semibold text-[#0A2342]">Urgente (4h)</h4>
-                      <p className="text-sm text-slate-600 mt-1">Richiede attenzione rapida</p>
-                    </button>
-                  </div>
+              <div>
+                <label className="block text-sm font-medium text-[#0A2342] mb-3">Urgenza</label>
+                <div className="grid grid-cols-3 gap-4">
+                  <button
+                    onClick={() => setFormData({ ...formData, urgency: 'normale' })}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      formData.urgency === 'normale' ? 'border-[#1D9E75] bg-[#1D9E75]/10' : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <h4 className="font-semibold text-[#0A2342]">Normale (48h)</h4>
+                    <p className="text-sm text-slate-600 mt-1">Intervento programmabile</p>
+                  </button>
+                  <button
+                    onClick={() => setFormData({ ...formData, urgency: 'urgente' })}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      formData.urgency === 'urgente' ? 'border-amber-500 bg-amber-50' : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <h4 className="font-semibold text-[#0A2342]">Urgente (4h)</h4>
+                    <p className="text-sm text-slate-600 mt-1">Richiede attenzione rapida</p>
+                  </button>
+                  <button
+                    onClick={() => setFormData({ ...formData, urgency: 'emergenza' })}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      formData.urgency === 'emergenza' ? 'border-red-500 bg-red-50' : 'border-slate-200 hover:border-red-300'
+                    }`}
+                  >
+                    <h4 className="font-semibold text-red-700">EMERGENZA</h4>
+                    <p className="text-sm text-slate-600 mt-1">Massima priorità</p>
+                  </button>
                 </div>
-              )}
+              </div>
             </div>
 
             <div className="flex gap-3 mt-8">
@@ -662,10 +655,10 @@ const handleSubcategoryConfirm = () => {
         {step === 4 && (
           <div>
             <h2 className="text-3xl font-bold text-[#0A2342] mb-3">
-              {isEmergency ? 'Tecnici disponibili' : 'Seleziona un tecnico'}
+              {formData.urgency === 'emergenza' ? 'Tecnici disponibili' : 'Seleziona un tecnico'}
             </h2>
             <p className="text-lg text-slate-600 mb-8">
-              {isEmergency ? '🚨 Il primo tecnico che accetta prende il lavoro' : `Tecnici specializzati in ${formData.category}`}
+              {formData.urgency === 'emergenza' ? '🚨 Il primo tecnico che accetta prende il lavoro' : `Tecnici specializzati in ${formData.category}`}
             </p>
             <div className="space-y-4">
               {filteredTechnicians.length === 0 && (
@@ -678,7 +671,7 @@ const handleSubcategoryConfirm = () => {
                 <div
                   key={tech.id}
                   className={`bg-white border-2 rounded-lg p-6 transition-all duration-200 ${
-                    isEmergency ? 'border-red-600' :
+                    formData.urgency === 'emergenza' ? 'border-red-600' :
                     formData.selectedTechnician === tech.id ? 'border-[#1D9E75] bg-[#1D9E75]/5 shadow-md' : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
@@ -707,7 +700,7 @@ const handleSubcategoryConfirm = () => {
                         </div>
                       </div>
                     </div>
-                    {isEmergency ? (
+                    {formData.urgency === 'emergenza' ? (
                       <Button onClick={() => setFormData({ ...formData, selectedTechnician: tech.id })} className="bg-red-600 hover:bg-red-700 text-white px-6 h-11 animate-pulse">
                         DISPONIBILE ORA?
                       </Button>
