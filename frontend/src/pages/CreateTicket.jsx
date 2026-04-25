@@ -24,7 +24,7 @@ const CreateTicket = () => {
       const yachtData = dashboardRes.data.yacht;
       setYacht(yachtData);
 
-      const openTicket = dashboardRes.data.recent_tickets.find(
+      const openTicket = dashboardRes.data.active_tickets.find(
         t => t.status === 'aperto' || t.status === 'assegnato'
       );
       

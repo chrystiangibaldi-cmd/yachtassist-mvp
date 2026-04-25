@@ -234,10 +234,11 @@ class OwnerDashboard(BaseModel):
     model_config = ConfigDict(extra="ignore")
     user: User
     yacht: Yacht
-    open_tickets: int
-    active_interventions: int
+    active_tickets: List[Ticket]
+    active_tickets_count: int
+    closed_tickets: List[Ticket]
+    closed_tickets_total: int
     season: str
-    recent_tickets: List[Ticket]
 
 class TechnicianDashboard(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -563,7 +564,11 @@ async def login(request: RealLoginRequest):
     return LoginResponse(user=User(**user), token=token)
 
 @api_router.get("/dashboard/owner", response_model=OwnerDashboard)
-async def get_owner_dashboard(user_id: str = "owner-1"):
+async def get_owner_dashboard(
+    user_id: str = "owner-1",
+    closed_offset: int = 0,
+    closed_limit: int = 5,
+):
     user = await db.users.find_one({"id": user_id}, {"_id": 0})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -572,15 +577,31 @@ async def get_owner_dashboard(user_id: str = "owner-1"):
         return OwnerDashboard(
             user=User(**user),
             yacht=Yacht(id="pending", name="Nessuna imbarcazione", model="", owner_id=user_id, marina="", category="", distance="", compliance_score=0),
-            open_tickets=0, active_interventions=0, season="Stagione 2025", recent_tickets=[]
+            active_tickets=[], active_tickets_count=0,
+            closed_tickets=[], closed_tickets_total=0,
+            season="Stagione 2025",
         )
-    tickets = await db.tickets.find({"owner_id": user_id}, {"_id": 0}).to_list(10)
-    open_tickets = len([t for t in tickets if t["status"] in ["aperto", "assegnato"]])
-    active_interventions = len([t for t in tickets if t["status"] == "pagato"])
+
+    # Fetch tutti i ticket owner, ordinati cronologicamente (piu' recenti prima)
+    all_tickets = await db.tickets.find(
+        {"owner_id": user_id}, {"_id": 0}
+    ).sort("created_at", -1).to_list(None)
+
+    # Split active vs closed
+    active_list = [t for t in all_tickets if t["status"] != "chiuso"]
+    closed_list = [t for t in all_tickets if t["status"] == "chiuso"]
+
+    # Paginazione closed
+    closed_paginated = closed_list[closed_offset:closed_offset + closed_limit]
+
     return OwnerDashboard(
-        user=User(**user), yacht=Yacht(**yacht),
-        open_tickets=open_tickets, active_interventions=active_interventions,
-        season="Stagione 2025", recent_tickets=[Ticket(**t) for t in tickets[:2]]
+        user=User(**user),
+        yacht=Yacht(**yacht),
+        active_tickets=[Ticket(**t) for t in active_list],
+        active_tickets_count=len(active_list),
+        closed_tickets=[Ticket(**t) for t in closed_paginated],
+        closed_tickets_total=len(closed_list),
+        season="Stagione 2025",
     )
 
 @api_router.get("/dashboard/technician", response_model=TechnicianDashboard)

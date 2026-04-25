@@ -22,6 +22,9 @@ const OwnerDashboard = () => {
   const navigate = useNavigate();
   const { user, logout } = useContext(UserContext);
   const [dashboard, setDashboard] = useState(null);
+  const [closedOffset, setClosedOffset] = useState(0);
+  const [showClosed, setShowClosed] = useState(false);
+  const [accumulatedClosed, setAccumulatedClosed] = useState([]);
 
   const { isLoaded } = useLoadScript({
     googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '',
@@ -30,12 +33,17 @@ const OwnerDashboard = () => {
 
   useEffect(() => {
     fetchDashboard();
-  }, []);
+  }, [closedOffset]);
 
   const fetchDashboard = async () => {
     try {
-      const response = await axios.get(`${BACKEND}/dashboard/owner?user_id=${user.id}`);
+      const response = await axios.get(`${BACKEND}/dashboard/owner?user_id=${user.id}&closed_offset=${closedOffset}`);
       setDashboard(response.data);
+      if (closedOffset === 0) {
+        setAccumulatedClosed(response.data.closed_tickets);
+      } else {
+        setAccumulatedClosed(prev => [...prev, ...response.data.closed_tickets]);
+      }
     } catch (error) {
       console.error('Error fetching dashboard:', error);
     }
@@ -62,6 +70,36 @@ const OwnerDashboard = () => {
     };
     return badges[status] || status;
   };
+
+  const renderTicketCard = (ticket) => (
+    <div
+      key={ticket.id}
+      data-testid={`ticket-${ticket.id}`}
+      className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-colors cursor-pointer"
+      onClick={() => navigate(`/owner/ticket/${ticket.id}`)}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-3">
+          <span className="font-semibold text-[#0A2342]">{ticket.id}</span>
+          {getStatusBadge(ticket.status)}
+          {ticket.urgency === 'alta' && (
+            <span className="px-2 py-1 bg-red-50 text-red-700 border border-red-200 rounded-full text-xs font-medium">URGENZA ALTA</span>
+          )}
+        </div>
+        <span className="text-sm text-slate-600">{ticket.marina}</span>
+      </div>
+      <div className="text-sm text-slate-600">
+        {ticket.work_items.map((item, idx) => (
+          <div key={idx}>• {item}</div>
+        ))}
+      </div>
+      {ticket.status !== 'aperto' && ticket.final_price != null && (
+        <div className="mt-2 text-sm font-medium text-[#0A2342]">
+          Totale: €{ticket.final_price}
+        </div>
+      )}
+    </div>
+  );
 
   const yachtCoords = dashboard.yacht.marina_lat && dashboard.yacht.marina_lng
     ? { lat: dashboard.yacht.marina_lat, lng: dashboard.yacht.marina_lng }
@@ -155,21 +193,13 @@ const OwnerDashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6" data-testid="open-tickets-card">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6" data-testid="active-tickets-card">
             <div className="flex items-center gap-3 mb-2">
               <FileText className="w-5 h-5 text-[#1D9E75]" />
-              <span className="text-sm text-slate-600 font-medium">Ticket aperti</span>
+              <span className="text-sm text-slate-600 font-medium">Ticket attivi</span>
             </div>
-            <p className="text-3xl font-bold text-[#0A2342]">{dashboard.open_tickets}</p>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6" data-testid="active-interventions-card">
-            <div className="flex items-center gap-3 mb-2">
-              <Wrench className="w-5 h-5 text-[#1D9E75]" />
-              <span className="text-sm text-slate-600 font-medium">Interventi in corso</span>
-            </div>
-            <p className="text-3xl font-bold text-[#0A2342]">{dashboard.active_interventions}</p>
+            <p className="text-3xl font-bold text-[#0A2342]">{dashboard.active_tickets_count}</p>
           </div>
 
           <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6" data-testid="season-card">
@@ -203,41 +233,63 @@ const OwnerDashboard = () => {
           </Button>
         </div>
 
-        {/* Recent Tickets */}
-        <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6">
-          <h3 className="text-xl font-semibold text-[#0A2342] mb-4">Ticket recenti</h3>
-          <div className="space-y-4">
-            {dashboard.recent_tickets.map((ticket) => (
-              <div
-                key={ticket.id}
-                data-testid={`ticket-${ticket.id}`}
-                className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-colors cursor-pointer"
-                onClick={() => navigate(`/owner/ticket/${ticket.id}`)}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <span className="font-semibold text-[#0A2342]">{ticket.id}</span>
-                    {getStatusBadge(ticket.status)}
-                    {ticket.urgency === 'alta' && (
-                      <span className="px-2 py-1 bg-red-50 text-red-700 border border-red-200 rounded-full text-xs font-medium">URGENZA ALTA</span>
-                    )}
-                  </div>
-                  <span className="text-sm text-slate-600">{ticket.marina}</span>
-                </div>
-                <div className="text-sm text-slate-600">
-                  {ticket.work_items.map((item, idx) => (
-                    <div key={idx}>• {item}</div>
-                  ))}
-                </div>
-                {ticket.status !== 'aperto' && ticket.final_price != null && (
-                  <div className="mt-2 text-sm font-medium text-[#0A2342]">
-                    Totale: €{ticket.final_price}
-                  </div>
+        {/* Active Tickets */}
+        <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6">
+          <h3 className="text-xl font-semibold text-[#0A2342] mb-4">Ticket attivi</h3>
+          {dashboard.active_tickets.length === 0 ? (
+            <p className="text-slate-500 text-sm">Nessun ticket attivo al momento.</p>
+          ) : (
+            <div className="space-y-4">
+              {dashboard.active_tickets.map(renderTicketCard)}
+            </div>
+          )}
+        </div>
+
+        {/* Closed Tickets History (collapsible) */}
+        {dashboard.closed_tickets_total > 0 && (
+          <div className="bg-white border border-slate-200 rounded-lg shadow-sm">
+            <div
+              data-testid="toggle-closed-tickets"
+              className="flex items-center justify-between p-6 hover:bg-slate-50 cursor-pointer transition-colors"
+              onClick={() => setShowClosed(!showClosed)}
+            >
+              <div className="flex items-center gap-2">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  className={`transition-transform ${showClosed ? 'rotate-90' : ''}`}
+                >
+                  <path
+                    d="M5 3 L9 7 L5 11"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <h3 className="text-xl font-semibold text-[#0A2342]">Storico ticket</h3>
+              </div>
+              <span className="text-sm text-slate-500">· {dashboard.closed_tickets_total} chiusi</span>
+            </div>
+            {showClosed && (
+              <div className="px-6 pb-6 space-y-4">
+                {accumulatedClosed.map(renderTicketCard)}
+                {accumulatedClosed.length < dashboard.closed_tickets_total && (
+                  <Button
+                    data-testid="load-more-closed-button"
+                    variant="outline"
+                    onClick={() => setClosedOffset(prev => prev + 5)}
+                    className="w-full mt-2"
+                  >
+                    Mostra altri 5
+                  </Button>
                 )}
               </div>
-            ))}
+            )}
           </div>
-        </div>
+        )}
       </main>
       <AiChatWidget />
     </div>
