@@ -4,6 +4,7 @@ import axios from 'axios';
 import { UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
 import { Anchor, ArrowLeft, MapPin, Star, Award } from 'lucide-react';
+import { getUrgencyLabel } from '@/lib/urgencyLabels';
 
 const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
@@ -91,7 +92,7 @@ const CreateTicket = () => {
               </div>
             </div>
             <span className="px-4 py-2 bg-red-50 text-red-700 border-2 border-red-600 rounded-lg text-sm font-bold">
-              URGENZA {ticket.urgency.toUpperCase()}
+              {getUrgencyLabel(ticket.urgency)}
             </span>
           </div>
 

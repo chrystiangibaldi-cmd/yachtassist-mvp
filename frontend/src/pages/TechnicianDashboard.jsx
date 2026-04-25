@@ -7,6 +7,7 @@ import { Anchor, LogOut, FileText, Euro, CheckCircle, MapPin } from 'lucide-reac
 import { GoogleMap, useLoadScript } from '@react-google-maps/api';
 import AdvancedMarker from '@/components/AdvancedMarker';
 import { formatAppointment } from '@/utils/appointment';
+import { getUrgencyLabel } from '@/lib/urgencyLabels';
 
 const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
@@ -166,8 +167,8 @@ const TechnicianDashboard = () => {
                     <div className="flex items-center gap-3">
                       <span className="font-semibold text-[#0A2342]">{ticket.id}</span>
                       {getStatusBadge(ticket.status)}
-                      {ticket.urgency === 'alta' && (
-                        <span className="px-2 py-1 bg-red-50 text-red-700 border border-red-200 rounded-full text-xs font-medium">URGENZA ALTA</span>
+                      {(ticket.urgency === 'alta' || ticket.urgency === 'emergenza') && (
+                        <span className="px-2 py-1 bg-red-50 text-red-700 border border-red-200 rounded-full text-xs font-medium">{getUrgencyLabel(ticket.urgency)}</span>
                       )}
                     </div>
                     <span className="text-sm text-slate-600">{ticket.marina}</span>

@@ -715,7 +715,7 @@ async def create_generic_ticket(request: CreateTicketRequest, user_id: str):
     ticket_number = random.randint(1000, 9999)
     ticket_id = f"YA-2025-{ticket_number}"
     work_item = f"{request.category}: {request.description[:50]}..."
-    urgency_map = {"normale": "media", "urgente": "alta", "emergenza": "alta"}
+    urgency_map = {"normale": "media", "urgente": "alta", "emergenza": "emergenza"}
     ticket_doc = {
         "id": ticket_id, "yacht_id": yacht_id, "owner_id": user_id,
         "technician_id": None, "status": "aperto",

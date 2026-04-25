@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Anchor, ArrowLeft, CheckCircle, FileText, Calendar, Euro, MapPin, Send, Plus, Trash2, Upload, X, Edit3 } from 'lucide-react';
 import { formatAppointment } from '@/utils/appointment';
 import { toast } from 'sonner';
+import { getUrgencyLabel } from '@/lib/urgencyLabels';
 
 const TechnicianTicketDetail = () => {
   const navigate = useNavigate();
@@ -262,7 +263,7 @@ const TechnicianTicketDetail = () => {
               <div>
                 <span className="text-sm text-slate-500 font-medium">Urgenza</span>
                 <p className={`font-medium ${ticket.urgency === 'alta' || ticket.urgency === 'emergenza' ? 'text-red-600' : 'text-[#0A2342]'}`}>
-                  {ticket.urgency.charAt(0).toUpperCase() + ticket.urgency.slice(1)}
+                  {getUrgencyLabel(ticket.urgency)}
                   {ticket.urgency === 'alta' && ' ⚠️'}
                   {ticket.urgency === 'emergenza' && ' 🚨'}
                 </p>
