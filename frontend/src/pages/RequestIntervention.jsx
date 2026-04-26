@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Anchor, ArrowLeft, ArrowRight, CheckCircle, Upload, MapPin, Star, AlertCircle, Sparkles } from 'lucide-react';
 import { GoogleMap, useLoadScript } from '@react-google-maps/api';
 import AdvancedMarker from '@/components/AdvancedMarker';
-import { CATEGORIES as categories } from '@/lib/categories';
+import { CATEGORIES as categories, getCategoryLabel } from '@/lib/categories';
 
 const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
@@ -664,7 +664,15 @@ const handleSubcategoryConfirm = () => {
                       <div>
                         <h3 className="text-xl font-semibold text-[#0A2342]">{tech.name}</h3>
                         <div className="flex items-center gap-3 text-sm text-slate-600 mt-1 flex-wrap">
-                          <span className="font-medium">{tech.specialization}</span>
+                          <span className="font-medium">
+                            {(() => {
+                              const matchedSpec = tech.specializations?.find(
+                                s => s === formData.categoryId
+                              );
+                              if (matchedSpec) return getCategoryLabel(matchedSpec);
+                              return getCategoryLabel(tech.specialization);
+                            })()}
+                          </span>
                           <span className="flex items-center gap-1">
                             <MapPin className="w-4 h-4" />
                             {tech.location}{tech.distance_km != null ? ` · ${tech.distance_km} km` : ''}
