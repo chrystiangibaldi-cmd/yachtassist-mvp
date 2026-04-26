@@ -663,8 +663,8 @@ const handleSubcategoryConfirm = () => {
             <div className="space-y-4">
               {filteredTechnicians.length === 0 && (
                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-8 text-center">
-                  <p className="text-slate-600">Nessun tecnico disponibile per questa categoria.</p>
-                  <p className="text-sm text-slate-500 mt-1">Torna indietro e prova a selezionare una categoria diversa.</p>
+                  <p className="text-slate-600">Al momento nessun tecnico certificato in questa zona</p>
+                  <p className="text-sm text-slate-500 mt-1">Stiamo ampliando la nostra rete di professionisti. Lascia la tua richiesta in coda — ti contatteremo non appena un tecnico sarà disponibile per questa categoria, oppure contatta il nostro supporto per assistenza diretta.</p>
                 </div>
               )}
               {filteredTechnicians.map((tech) => (
