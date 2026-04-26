@@ -9,6 +9,7 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import { GoogleMap, useLoadScript } from '@react-google-maps/api';
 import AdvancedMarker from '@/components/AdvancedMarker';
 import { formatAppointment, parseSlotText } from '@/utils/appointment';
+import { getUrgencyLabel } from '@/lib/urgencyLabels';
 import { toast } from 'sonner';
 
 const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
@@ -410,6 +411,13 @@ const handleAddAttachments = async (files) => {
         <div className="mb-6">
           <h2 className="text-3xl font-bold text-[#0A2342] mb-2">Ticket {ticket.id}</h2>
           <p className="text-lg text-slate-600">{yacht.name} ({yacht.model})</p>
+          {ticket.urgency && (
+            <p className={`text-sm font-semibold mt-1 ${ticket.urgency === 'alta' || ticket.urgency === 'emergenza' ? 'text-red-600' : 'text-slate-500'}`}>
+              {getUrgencyLabel(ticket.urgency)}
+              {ticket.urgency === 'alta' && ' ⚠️'}
+              {ticket.urgency === 'emergenza' && ' 🚨'}
+            </p>
+          )}
         </div>
 
         <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-8 mb-6">
