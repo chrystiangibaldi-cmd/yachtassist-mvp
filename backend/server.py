@@ -563,6 +563,48 @@ async def login(request: RealLoginRequest):
     user.pop("password", None)
     return LoginResponse(user=User(**user), token=token)
 
+def _ticket_sort_pipeline_stages():
+    """
+    Returns aggregate pipeline stages that add urgency_priority
+    and status_priority computed fields, then sort tickets in
+    a stable, semantic order:
+      1. urgency DESC: emergenza > alta > media > bassa
+      2. status DESC: aperto > assegnato > pagato > confermato
+                    > eseguito > chiuso
+      3. created_at DESC: most recent first (tie-breaker)
+
+    Used by both GET /dashboard/technician and /dashboard/owner
+    to ensure consistent ticket ordering across components.
+    """
+    return [
+        {"$addFields": {
+            "urgency_priority": {"$switch": {
+                "branches": [
+                    {"case": {"$eq": ["$urgency", "emergenza"]}, "then": 4},
+                    {"case": {"$eq": ["$urgency", "alta"]}, "then": 3},
+                    {"case": {"$eq": ["$urgency", "media"]}, "then": 2},
+                    {"case": {"$eq": ["$urgency", "bassa"]}, "then": 1},
+                ],
+                "default": 1
+            }},
+            "status_priority": {"$switch": {
+                "branches": [
+                    {"case": {"$eq": ["$status", "aperto"]}, "then": 5},
+                    {"case": {"$eq": ["$status", "assegnato"]}, "then": 4},
+                    {"case": {"$eq": ["$status", "pagato"]}, "then": 3},
+                    {"case": {"$eq": ["$status", "confermato"]}, "then": 2},
+                    {"case": {"$eq": ["$status", "eseguito"]}, "then": 1},
+                ],
+                "default": 0
+            }},
+        }},
+        {"$sort": {
+            "urgency_priority": -1,
+            "status_priority": -1,
+            "created_at": -1
+        }},
+    ]
+
 @api_router.get("/dashboard/owner", response_model=OwnerDashboard)
 async def get_owner_dashboard(
     user_id: str = "owner-1",
@@ -582,10 +624,12 @@ async def get_owner_dashboard(
             season="Stagione 2025",
         )
 
-    # Fetch tutti i ticket owner, ordinati cronologicamente (piu' recenti prima)
-    all_tickets = await db.tickets.find(
-        {"owner_id": user_id}, {"_id": 0}
-    ).sort("created_at", -1).to_list(None)
+    # Fetch tutti i ticket owner, ordinati per urgency, status, created_at
+    pipeline = [
+        {"$match": {"owner_id": user_id}},
+        *_ticket_sort_pipeline_stages(),
+    ]
+    all_tickets = await db.tickets.aggregate(pipeline).to_list(None)
 
     # Split active vs closed
     active_list = [t for t in all_tickets if t["status"] != "chiuso"]
@@ -610,7 +654,12 @@ async def get_technician_dashboard(user_id: str = "tech-1"):
         user = await db.users.find_one({"id": user_id}, {"_id": 0})
         if not user:
             raise HTTPException(status_code=404, detail=f"User {user_id} not found")
-        tickets = await db.tickets.find({"technician_id": user_id}, {"_id": 0}).to_list(10)
+        pipeline = [
+            {"$match": {"technician_id": user_id}},
+            *_ticket_sort_pipeline_stages(),
+            {"$limit": 10}
+        ]
+        tickets = await db.tickets.aggregate(pipeline).to_list(10)
         total_earnings = sum([(t.get("technician_payment") or 0) for t in tickets if t["status"] == "chiuso"])
         pending_earnings = sum([(t.get("technician_payment") or 0) for t in tickets if t["status"] in ["assegnato", "pagato", "eseguito"]])
         return TechnicianDashboard(
