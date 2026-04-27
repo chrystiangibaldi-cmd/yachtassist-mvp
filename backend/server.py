@@ -165,6 +165,10 @@ class Ticket(BaseModel):
     final_price: Optional[int] = None
     commission: Optional[int] = None
     technician_payment: Optional[int] = None
+    # Tariffa commissione applicata (es. 0.10 per 10%). Salvata da
+    # submit_quote o da self-heal in create_payment_intent. Letta dal
+    # frontend tecnico per chip "Scaglione X%" senza ricalcolo client.
+    commission_rate: Optional[float] = None
     marina: str
     appointment: Optional[Appointment] = None
     proposed_slots: List[str] = Field(default_factory=list)
