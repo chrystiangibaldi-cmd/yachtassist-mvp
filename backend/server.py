@@ -127,6 +127,10 @@ class TechnicianProfile(BaseModel):
     distance: str
     rating: float
     eco_certified: bool = False
+    # Se popolato (es. 0.05), sostituisce gli scaglioni tariffari di
+    # calculate_commission(). Pianificato per abbonamento premium 2027
+    # e per casi speciali bilaterali pre-beta.
+    commission_override: Optional[float] = None
     avatar_url: Optional[str] = None
     marina_lat: Optional[float] = None
     marina_lng: Optional[float] = None
@@ -812,9 +816,15 @@ async def submit_quote(ticket_id: str, request: SubmitQuoteRequest):
     if ticket["status"] != "assegnato":
         raise HTTPException(status_code=400, detail="Il preventivo può essere inviato solo per ticket assegnati")
 
+    if not ticket.get("technician_id"):
+        raise HTTPException(status_code=400, detail="Ticket senza tecnico assegnato: impossibile preventivo")
+
     quote_items = [item.dict() for item in request.items]
     total = sum(item.importo for item in request.items)
-    commission_data = calculate_commission(total)
+    commission_data = await calculate_commission(
+        total,
+        technician_id=ticket["technician_id"],
+    )
     commission = commission_data["commission"]
     technician_payment = commission_data["payout"]
 
@@ -823,6 +833,7 @@ async def submit_quote(ticket_id: str, request: SubmitQuoteRequest):
         "final_price": total,
         "commission": commission,
         "technician_payment": technician_payment,
+        "commission_rate": commission_data["rate"],
     }
     if request.note:
         update_data["quote_note"] = request.note
