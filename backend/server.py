@@ -151,7 +151,7 @@ class Appointment(BaseModel):
 class PdfAttachment(BaseModel):
     """Allegato PDF tipato per preventivo tecnico (max 5MB, mime PDF only)."""
     name: str
-    data: str  # base64 data URI
+    data: str = Field(..., repr=False)  # base64 data URI (repr=False per GDPR: escluso da log/traceback)
     size: int  # bytes
     mime_type: Optional[str] = "application/pdf"
 
