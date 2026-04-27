@@ -20,17 +20,23 @@ def set_db(database):
     db = database
 
 # Calcola commissione YachtAssist secondo scala tariffaria
+# Scaglioni decisione 27 apr 2026 (per valore singolo ticket):
+#   €0     - €300    : 15%
+#   €301   - €1.000  : 10%
+#   €1.001 - €3.000  : 8%
+#   €3.001+          : 5%
+# Curva regressiva: ticket piccoli sussidiano costi fissi piattaforma,
+# ticket grandi premiano tecnici di alto profilo. Premium tier 5% flat
+# pianificato per 2027 via commission_override su TechnicianProfile.
 def calculate_commission(amount_euros: int) -> dict:
-    if amount_euros <= 100:
-        rate = 0.20
-    elif amount_euros <= 300:
+    if amount_euros <= 300:
         rate = 0.15
     elif amount_euros <= 1000:
-        rate = 0.12
-    elif amount_euros <= 3000:
         rate = 0.10
-    else:
+    elif amount_euros <= 3000:
         rate = 0.08
+    else:
+        rate = 0.05
     commission = round(amount_euros * rate)
     payout = amount_euros - commission
     return {"commission": commission, "payout": payout, "rate": rate}
