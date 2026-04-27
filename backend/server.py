@@ -657,9 +657,8 @@ async def get_technician_dashboard(user_id: str = "tech-1"):
         pipeline = [
             {"$match": {"technician_id": user_id}},
             *_ticket_sort_pipeline_stages(),
-            {"$limit": 10}
         ]
-        tickets = await db.tickets.aggregate(pipeline).to_list(10)
+        tickets = await db.tickets.aggregate(pipeline).to_list(None)
         total_earnings = sum([(t.get("technician_payment") or 0) for t in tickets if t["status"] == "chiuso"])
         pending_earnings = sum([(t.get("technician_payment") or 0) for t in tickets if t["status"] in ["assegnato", "pagato", "eseguito"]])
         return TechnicianDashboard(
