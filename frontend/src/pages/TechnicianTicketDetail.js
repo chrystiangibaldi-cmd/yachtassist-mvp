@@ -106,7 +106,7 @@ const TechnicianTicketDetail = () => {
     }
     const reader = new FileReader();
     reader.onload = () => {
-      setQuotePdf({ name: file.name, data: reader.result });
+      setQuotePdf({ name: file.name, data: reader.result, size: file.size, mime_type: file.type });
     };
     reader.onerror = () => {
       setQuoteError('Errore nella lettura del file');
@@ -141,7 +141,7 @@ const TechnicianTicketDetail = () => {
           importo: Math.round(parseFloat(r.importo))
         })),
         note: quoteNotes.trim() || null,
-        preventivo_pdf: quotePdf ? { name: quotePdf.name, data: quotePdf.data } : null
+        preventivo_pdf: quotePdf ? { name: quotePdf.name, data: quotePdf.data, size: quotePdf.size, mime_type: quotePdf.mime_type } : null
       });
       setQuoteSuccess(true);
       await fetchData();

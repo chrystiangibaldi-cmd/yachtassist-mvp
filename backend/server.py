@@ -148,6 +148,27 @@ class Appointment(BaseModel):
     lat: Optional[float] = None
     lng: Optional[float] = None
 
+class PdfAttachment(BaseModel):
+    """Allegato PDF tipato per preventivo tecnico (max 5MB, mime PDF only)."""
+    name: str
+    data: str  # base64 data URI
+    size: int  # bytes
+    mime_type: Optional[str] = "application/pdf"
+
+    @field_validator("size")
+    @classmethod
+    def _size_max_5mb(cls, v: int) -> int:
+        if v > 5 * 1024 * 1024:
+            raise ValueError("File troppo grande (max 5MB)")
+        return v
+
+    @field_validator("mime_type")
+    @classmethod
+    def _must_be_pdf(cls, v: Optional[str]) -> Optional[str]:
+        if v and v != "application/pdf":
+            raise ValueError("Solo formato PDF accettato")
+        return v
+
 class Ticket(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
@@ -179,7 +200,7 @@ class Ticket(BaseModel):
     documents: List[str] = []
     quote_items: Optional[List[QuoteItem]] = None
     quote_note: Optional[str] = None
-    preventivo_pdf: Optional[Any] = None
+    preventivo_pdf: Optional[PdfAttachment] = None
     created_at: str
     appointment_proposed_at: Optional[str] = None
     appointment_confirmed_at: Optional[str] = None
@@ -263,7 +284,7 @@ class AssignTechnicianRequest(BaseModel):
 class SubmitQuoteRequest(BaseModel):
     items: List[QuoteItem]
     note: Optional[str] = None
-    preventivo_pdf: Optional[Any] = None
+    preventivo_pdf: Optional[PdfAttachment] = None
 
 class CloseTicketRequest(BaseModel):
     documents: List[str]

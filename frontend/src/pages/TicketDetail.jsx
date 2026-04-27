@@ -175,6 +175,7 @@ const TicketDetail = () => {
   const [yacht, setYacht] = useState(null);
   const [technician, setTechnician] = useState(null);
   const [showPayment, setShowPayment] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [appointmentLocation, setAppointmentLocation] = useState('');
@@ -578,15 +579,37 @@ const handleAddAttachments = async (files) => {
         )}
 
         {ticket.preventivo_pdf?.data && (
-          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6">
-            <a
-              href={ticket.preventivo_pdf.data}
-              download={ticket.preventivo_pdf.name || `preventivo-${ticket.id}.pdf`}
-              className="inline-flex items-center gap-2 text-sm font-medium text-[#1D9E75] hover:text-[#1D9E75]/80"
-            >
-              <Paperclip className="w-4 h-4" />
-              Scarica preventivo PDF ({ticket.preventivo_pdf.name || 'preventivo.pdf'})
-            </a>
+          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 mb-6">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText className="w-5 h-5 text-slate-500 shrink-0" />
+                <span className="text-sm font-medium text-slate-700 truncate">
+                  {ticket.preventivo_pdf.name || 'preventivo.pdf'}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowPdfPreview(!showPdfPreview)}
+                  className="text-sm text-slate-600 hover:text-slate-900 px-3 py-1 border border-slate-300 rounded"
+                >
+                  {showPdfPreview ? 'Nascondi' : 'Visualizza'}
+                </button>
+                <a
+                  href={ticket.preventivo_pdf.data}
+                  download={ticket.preventivo_pdf.name || `preventivo-${ticket.id}.pdf`}
+                  className="text-sm text-[#1D9E75] hover:text-[#1D9E75]/80 px-3 py-1 border border-[#1D9E75]/40 rounded"
+                >
+                  Scarica
+                </a>
+              </div>
+            </div>
+            {showPdfPreview && (
+              <iframe
+                src={ticket.preventivo_pdf.data}
+                className="w-full h-96 mt-3 border border-slate-200 rounded"
+                title="Anteprima preventivo PDF"
+              />
+            )}
           </div>
         )}
 
