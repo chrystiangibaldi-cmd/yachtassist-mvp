@@ -170,6 +170,8 @@ class Ticket(BaseModel):
     # frontend tecnico per chip "Scaglione X%" senza ricalcolo client.
     commission_rate: Optional[float] = None
     marina: str
+    marina_lat: Optional[float] = None
+    marina_lng: Optional[float] = None
     appointment: Optional[Appointment] = None
     proposed_slots: List[str] = Field(default_factory=list)
     appointment_lat: Optional[float] = None  # DEPRECATED, rimuovere in commit 5d dopo rollout completo
