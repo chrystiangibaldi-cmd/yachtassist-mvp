@@ -190,6 +190,7 @@ class Ticket(BaseModel):
     # submit_quote o da self-heal in create_payment_intent. Letta dal
     # frontend tecnico per chip "Scaglione X%" senza ricalcolo client.
     commission_rate: Optional[float] = None
+    welcome_bonus_applied: bool = False
     marina: str
     marina_lat: Optional[float] = None
     marina_lng: Optional[float] = None
@@ -847,9 +848,20 @@ async def submit_quote(ticket_id: str, request: SubmitQuoteRequest):
 
     quote_items = [item.dict() for item in request.items]
     total = sum(item.importo for item in request.items)
+
+    # Welcome bonus -5pp sul primissimo preventivo EVER del tecnico (BP v6).
+    # Marker affidabile: commission_rate è popolato sui ticket solo da c6a6a9b
+    # in poi, quindi count==0 implica nessun preventivo precedente.
+    prior_quotes_count = await db.tickets.count_documents({
+        "technician_id": ticket["technician_id"],
+        "commission_rate": {"$exists": True, "$ne": None},
+    })
+    is_first_quote_ever = (prior_quotes_count == 0)
+
     commission_data = await calculate_commission(
         total,
         technician_id=ticket["technician_id"],
+        welcome_bonus=is_first_quote_ever,
     )
     commission = commission_data["commission"]
     technician_payment = commission_data["payout"]
@@ -860,6 +872,7 @@ async def submit_quote(ticket_id: str, request: SubmitQuoteRequest):
         "commission": commission,
         "technician_payment": technician_payment,
         "commission_rate": commission_data["rate"],
+        "welcome_bonus_applied": commission_data["welcome_bonus_applied"],
     }
     if request.note:
         update_data["quote_note"] = request.note

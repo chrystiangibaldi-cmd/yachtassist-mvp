@@ -32,10 +32,17 @@ def set_db(database):
 # Se technician_id è passato e quel tecnico ha commission_override
 # popolato sul TechnicianProfile, l'override sostituisce gli scaglioni
 # (es. 0.05 per abbonamento premium 2027 o accordi bilaterali pre-beta).
+#
+# Welcome bonus (BP v6, acquisizione tecnici Scenario B): se
+# welcome_bonus=True, applica -5pp al rate finale (dopo override o
+# scaglione) con floor 0% via max(0.0, ...). Si applica anche su
+# commission_override (no skip premium). Triggerato dal call site solo
+# per il primissimo preventivo EVER del tecnico.
 async def calculate_commission(
     amount_euros: int,
     *,
     technician_id: Optional[str] = None,
+    welcome_bonus: bool = False,
 ) -> dict:
     rate = None
 
@@ -56,9 +63,17 @@ async def calculate_commission(
         else:
             rate = 0.05
 
+    if welcome_bonus:
+        rate = max(0.0, round(rate - 0.05, 4))
+
     commission = round(amount_euros * rate)
     payout = amount_euros - commission
-    return {"commission": commission, "payout": payout, "rate": rate}
+    return {
+        "commission": commission,
+        "payout": payout,
+        "rate": rate,
+        "welcome_bonus_applied": welcome_bonus,
+    }
 
 @payments_router.post("/create-intent")
 async def create_payment_intent(ticket_id: str):
