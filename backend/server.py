@@ -864,7 +864,7 @@ async def submit_quote(ticket_id: str, request: SubmitQuoteRequest):
     if request.note:
         update_data["quote_note"] = request.note
     if request.preventivo_pdf:
-        update_data["preventivo_pdf"] = request.preventivo_pdf
+        update_data["preventivo_pdf"] = request.preventivo_pdf.model_dump(mode="json")
 
     await db.tickets.update_one({"id": ticket_id}, {"$set": update_data})
 
