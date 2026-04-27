@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { UserContext } from '@/App';
 import { Button } from '@/components/ui/button';
-import { Anchor, ArrowLeft, CheckCircle, FileText, Calendar, Star, Award, CreditCard, Lock, Upload, Paperclip, MapPin } from 'lucide-react';
+import { Anchor, ArrowLeft, CheckCircle, FileText, Calendar, Star, Award, CreditCard, Lock, Upload, Paperclip, MapPin, Search } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { GoogleMap, useLoadScript } from '@react-google-maps/api';
@@ -550,6 +550,26 @@ const handleAddAttachments = async (files) => {
               <span className="text-lg font-bold text-[#0A2342]">€{ticket.final_price}</span>
             </div>
           </div>
+        ) : ticket.status === 'aperto' ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg shadow-sm p-6 mb-6">
+            <h3 className="text-lg font-semibold text-[#0A2342] mb-2 flex items-center gap-2">
+              <Search className="w-5 h-5 text-amber-600" />
+              In attesa di assegnazione del tecnico
+            </h3>
+            <p className="text-amber-700 text-sm">
+              Riceverai una notifica appena un professionista verrà assegnato al tuo ticket.
+            </p>
+          </div>
+        ) : ticket.status === 'assegnato' ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg shadow-sm p-6 mb-6">
+            <h3 className="text-lg font-semibold text-[#0A2342] mb-2 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-amber-600" />
+              Preventivo in elaborazione da {technician?.name || 'tecnico assegnato'}
+            </h3>
+            <p className="text-amber-700 text-sm">
+              Riceverai una notifica appena il preventivo sarà pronto.
+            </p>
+          </div>
         ) : (
           <div className="bg-amber-50 border border-amber-200 rounded-lg shadow-sm p-6 mb-6">
             <h3 className="text-lg font-semibold text-[#0A2342] mb-2">Dettaglio preventivo</h3>
@@ -669,7 +689,7 @@ const handleAddAttachments = async (files) => {
             onCancel={() => setShowPayment(false)}
           />
         )}
-{ticket.status === 'assegnato' && user.role === 'owner' && !showPayment && (
+{ticket.status === 'assegnato' && user.role === 'owner' && !showPayment && ticket.final_price && (
   <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 mb-4 flex items-center gap-3">
     <span className="text-2xl">🧪</span>
     <div>
