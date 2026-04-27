@@ -66,7 +66,6 @@ const OwnerDashboard = () => {
       'assegnato': <span className="px-2 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-medium">Assegnato</span>,
       'pagato': <span className="px-2 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-full text-xs font-medium">Pagato</span>,
       'confermato': <span className="px-2 py-1 bg-teal-50 text-teal-700 border border-teal-200 rounded-full text-xs font-medium">Confermato</span>,
-      'eseguito': <span className="px-2 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full text-xs font-medium">Eseguito</span>,
       'chiuso': <span className="px-2 py-1 bg-slate-100 text-slate-700 border border-slate-300 rounded-full text-xs font-medium">Chiuso</span>,
     };
     return badges[status] || status;

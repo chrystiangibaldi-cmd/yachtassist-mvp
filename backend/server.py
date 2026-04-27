@@ -154,7 +154,7 @@ class Ticket(BaseModel):
     yacht_id: str
     owner_id: str
     technician_id: Optional[str] = None
-    status: Literal["aperto", "assegnato", "pagato", "confermato", "eseguito", "chiuso"]
+    status: Literal["aperto", "assegnato", "pagato", "confermato", "chiuso"]
     urgency: Literal["alta", "media", "bassa", "emergenza"]
     work_items: List[str]
     category: Optional[str] = None
@@ -578,7 +578,7 @@ def _ticket_sort_pipeline_stages():
     a stable, semantic order:
       1. urgency DESC: emergenza > alta > media > bassa
       2. status DESC: aperto > assegnato > pagato > confermato
-                    > eseguito > chiuso
+                    > chiuso
       3. created_at DESC: most recent first (tie-breaker)
 
     Used by both GET /dashboard/technician and /dashboard/owner
@@ -601,7 +601,6 @@ def _ticket_sort_pipeline_stages():
                     {"case": {"$eq": ["$status", "assegnato"]}, "then": 4},
                     {"case": {"$eq": ["$status", "pagato"]}, "then": 3},
                     {"case": {"$eq": ["$status", "confermato"]}, "then": 2},
-                    {"case": {"$eq": ["$status", "eseguito"]}, "then": 1},
                 ],
                 "default": 0
             }},
@@ -668,7 +667,7 @@ async def get_technician_dashboard(user_id: str = "tech-1"):
         ]
         tickets = await db.tickets.aggregate(pipeline).to_list(None)
         total_earnings = sum([(t.get("technician_payment") or 0) for t in tickets if t["status"] == "chiuso"])
-        pending_earnings = sum([(t.get("technician_payment") or 0) for t in tickets if t["status"] in ["assegnato", "pagato", "eseguito"]])
+        pending_earnings = sum([(t.get("technician_payment") or 0) for t in tickets if t["status"] in ["assegnato", "pagato"]])
         return TechnicianDashboard(
             user=User(**user), assigned_tickets=[Ticket(**t) for t in tickets],
             total_earnings=total_earnings, pending_earnings=pending_earnings
@@ -951,7 +950,7 @@ async def propose_appointment(
             detail="Solo il tecnico assegnato può proporre disponibilità",
         )
 
-    if ticket["status"] in ("confermato", "eseguito", "chiuso"):
+    if ticket["status"] in ("confermato", "chiuso"):
         raise HTTPException(
             status_code=400,
             detail="Appuntamento già confermato, contatta il tecnico per modifiche",
@@ -992,7 +991,7 @@ async def confirm_appointment(
             detail="Solo il proprietario può confermare l'appuntamento",
         )
 
-    if ticket["status"] in ("confermato", "eseguito", "chiuso"):
+    if ticket["status"] in ("confermato", "chiuso"):
         raise HTTPException(
             status_code=400,
             detail="Appuntamento già confermato, contatta il tecnico per modifiche",

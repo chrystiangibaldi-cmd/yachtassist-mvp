@@ -375,7 +375,7 @@ const handleAddAttachments = async (files) => {
   }
 
   const getStatusSteps = () => {
-    const steps = ['aperto', 'assegnato', 'pagato', 'confermato', 'eseguito', 'chiuso'];
+    const steps = ['aperto', 'assegnato', 'pagato', 'confermato', 'chiuso'];
     const currentIndex = steps.indexOf(ticket.status);
     return steps.map((step, idx) => ({
       name: step.charAt(0).toUpperCase() + step.slice(1),
@@ -812,8 +812,8 @@ const handleAddAttachments = async (files) => {
           </div>
         )}
 
-        {/* Appuntamento confermato (readonly, status=confermato o eseguito) */}
-        {(ticket.status === 'confermato' || ticket.status === 'eseguito') && ticket.appointment && (
+        {/* Appuntamento confermato (readonly, status=confermato) */}
+        {ticket.status === 'confermato' && ticket.appointment && (
           <div className="bg-green-50 border-2 border-green-500 rounded-lg shadow-sm p-6 mb-6">
             <h3 className="text-lg font-semibold text-green-800 mb-2 flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-green-600" />
