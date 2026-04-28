@@ -62,9 +62,10 @@ const AiChatWidget = () => {
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Apri chat assistente"
-          className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-[#0A2342] text-white shadow-lg hover:bg-[#0A2342]/90 flex items-center justify-center transition"
+          className="fixed bottom-6 right-6 z-50 px-5 py-3 rounded-full bg-[#0A2342] text-white shadow-lg hover:bg-[#0A2342]/90 flex items-center gap-2 transition"
         >
-          <Anchor className="w-6 h-6" />
+          <Anchor className="w-5 h-5 text-[#00A878]" />
+          <span className="font-semibold text-sm">Chiedi all'AI</span>
         </button>
       )}
       {open && (
