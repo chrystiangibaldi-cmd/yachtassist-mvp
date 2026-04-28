@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { Anchor, Send, X } from 'lucide-react';
+import { UserContext } from '@/App';
 
 const BACKEND = "https://yachtassist-mvp-production.up.railway.app/api";
 
@@ -11,6 +12,7 @@ const INITIAL_GREETING = {
 };
 
 const AiChatWidget = () => {
+  const { user } = useContext(UserContext);
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([INITIAL_GREETING]);
   const [input, setInput] = useState('');
@@ -33,6 +35,7 @@ const AiChatWidget = () => {
     try {
       const res = await axios.post(`${BACKEND}/ai/chat`, {
         messages: next.map((m) => ({ role: m.role, content: m.content })),
+        user_id: user?.id || null,
       });
       setMessages([...next, { role: 'assistant', content: res.data.reply }]);
     } catch (err) {

@@ -1089,7 +1089,7 @@ async def ai_diagnose(request: DiagnoseRequest):
     try:
         message = await asyncio.to_thread(
             anthropic_client.messages.create,
-            model="claude-opus-4-6",
+            model="claude-opus-4-7",
             max_tokens=400,
             messages=[{
                 "role": "user",
@@ -1121,8 +1121,9 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
+    user_id: Optional[str] = None
 
-AI_CHAT_SYSTEM_PROMPT = (
+AI_CHAT_SYSTEM_PROMPT_BASE = (
     "Sei un assistente esperto di nautica da diporto e della piattaforma YachtAssist. "
     "Rispondi SEMPRE in italiano, in modo chiaro, pratico e cortese.\n\n"
     "Competenze:\n"
@@ -1132,27 +1133,101 @@ AI_CHAT_SYSTEM_PROMPT = (
     "gestione preventivi, pagamenti, selezione di tecnici certificati.\n"
     "- Consigli generali di manutenzione, sicurezza e buone pratiche nautiche.\n\n"
     "Regole:\n"
-    "- Non hai accesso ai dati personali dell'utente, né al suo ticket o profilo. "
-    "Se l'utente ti chiede informazioni specifiche sul suo account, indirizzalo "
-    "alla dashboard o all'area ticket.\n"
+    "- Hai accesso ai ticket attivi dell'utente solo se forniti nel context. "
+    "Usa quei dati per rispondere a domande specifiche su stato preventivi, "
+    "appuntamenti, tecnici assegnati. Se il context è assente o non contiene "
+    "il ticket richiesto, indirizza l'utente alla dashboard.\n"
     "- Per domande non nautiche o fuori scope (fiscali, legali non nautici, "
     "medicina, ecc.) rispondi gentilmente che non sei l'interlocutore "
     "adeguato e, se possibile, suggerisci una fonte ufficiale.\n"
     "- Risposte sintetiche (max 5-6 frasi) quando possibile."
 )
 
+async def _build_user_context(user_id: str, role: Optional[str]) -> str:
+    """
+    Costruisce blocco testo con ticket attivi del user da iniettare nel system prompt.
+    Ritorna stringa vuota se nessun ticket attivo o role sconosciuto.
+    Privacy: per owner esclude campi privacy-tecnico (commission, commission_rate, welcome_bonus_applied, technician_payment).
+    """
+    active_statuses = ["aperto", "assegnato", "pagato", "confermato"]
+
+    if role == "owner":
+        query = {"owner_id": user_id, "status": {"$in": active_statuses}}
+        projection = {
+            "_id": 0,
+            "commission": 0,
+            "commission_rate": 0,
+            "welcome_bonus_applied": 0,
+            "technician_payment": 0,
+        }
+    elif role == "technician":
+        query = {"technician_id": user_id, "status": {"$in": ["assegnato", "pagato", "confermato"]}}
+        projection = {"_id": 0}
+    else:
+        return ""
+
+    tickets = await db.tickets.find(query, projection).to_list(50)
+    if not tickets:
+        return ""
+
+    lines = ["DATI UTENTE — Ticket attivi:"]
+    for t in tickets:
+        ticket_id = t.get("id", "?")
+        status = t.get("status", "?")
+        urgency = t.get("urgency", "?")
+        category = t.get("category", "?")
+        description = (t.get("description") or "")[:100]
+        marina = t.get("marina") or "?"
+        technician_id = t.get("technician_id") or "non ancora assegnato"
+        final_price = t.get("final_price")
+        appointment = t.get("appointment")
+
+        block = (
+            f"\n- Ticket {ticket_id} [{status} / {urgency}]: {category}. "
+            f"Descrizione: {description}. Località: {marina}. "
+            f"Tecnico: {technician_id}."
+        )
+        if final_price is not None:
+            block += f" Preventivo: €{final_price}."
+        if appointment:
+            block += f" Appuntamento: {appointment}."
+        if role == "technician":
+            cr = t.get("commission_rate")
+            tp = t.get("technician_payment")
+            wb = t.get("welcome_bonus_applied")
+            if cr is not None:
+                block += f" Rate commissione: {round(cr*100)}%."
+            if tp is not None:
+                block += f" Tuo guadagno: €{tp}."
+            if wb:
+                block += " (Welcome bonus applicato)"
+
+        lines.append(block)
+
+    return "".join(lines)
+
 @api_router.post("/ai/chat")
 async def ai_chat(request: ChatRequest):
-    """Chatbot nautico e YachtAssist (Claude Opus 4.6)."""
+    """Chatbot nautico e YachtAssist con context dinamico user."""
     if not request.messages:
         raise HTTPException(status_code=400, detail="Nessun messaggio fornito")
     try:
+        system_prompt = AI_CHAT_SYSTEM_PROMPT_BASE
+
+        if request.user_id:
+            user = await db.users.find_one({"id": request.user_id}, {"_id": 0, "role": 1})
+            if user:
+                role = user.get("role")
+                context_block = await _build_user_context(request.user_id, role)
+                if context_block:
+                    system_prompt = AI_CHAT_SYSTEM_PROMPT_BASE + "\n\n" + context_block
+
         payload = [{"role": m.role, "content": m.content} for m in request.messages]
         message = await asyncio.to_thread(
             anthropic_client.messages.create,
-            model="claude-opus-4-6",
+            model="claude-opus-4-7",
             max_tokens=700,
-            system=AI_CHAT_SYSTEM_PROMPT,
+            system=system_prompt,
             messages=payload,
         )
         reply = message.content[0].text

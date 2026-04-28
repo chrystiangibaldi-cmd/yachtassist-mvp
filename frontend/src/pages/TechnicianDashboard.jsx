@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Anchor, LogOut, FileText, Euro, CheckCircle, MapPin } from 'lucide-react';
 import { GoogleMap, useLoadScript } from '@react-google-maps/api';
 import AdvancedMarker from '@/components/AdvancedMarker';
+import AiChatWidget from '@/components/AiChatWidget';
 import { formatAppointment } from '@/utils/appointment';
 import { getUrgencyLabel } from '@/lib/urgencyLabels';
 
@@ -194,6 +195,7 @@ const TechnicianDashboard = () => {
           )}
         </div>
       </main>
+      <AiChatWidget />
     </div>
   );
 };
