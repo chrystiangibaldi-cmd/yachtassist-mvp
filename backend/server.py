@@ -236,6 +236,7 @@ class CreateTicketRequest(BaseModel):
     marina_lat: Optional[float] = None
     marina_lng: Optional[float] = None
     photos: Optional[List[Attachment]] = []
+    yacht_id: Optional[str] = None  # NUOVO multi-boat: se omesso fallback al primo yacht owner
 
 class LoginRequest(BaseModel):
     role: Literal["owner", "technician"]
@@ -265,7 +266,8 @@ class LoginResponse(BaseModel):
 class OwnerDashboard(BaseModel):
     model_config = ConfigDict(extra="ignore")
     user: User
-    yacht: Yacht
+    yacht: Yacht  # DEPRECATED, mantenuto per retrocompat frontend (= yachts[0] o pending)
+    yachts: List[Yacht] = []  # NUOVO: tutte le yacht dell'owner per multi-boat
     active_tickets: List[Ticket]
     active_tickets_count: int
     closed_tickets: List[Ticket]
@@ -645,15 +647,22 @@ async def get_owner_dashboard(
     user = await db.users.find_one({"id": user_id}, {"_id": 0})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    yacht = await db.yachts.find_one({"owner_id": user_id}, {"_id": 0})
-    if not yacht:
+    # Multi-boat: fetch all yachts dell'owner
+    yachts_list = await db.yachts.find({"owner_id": user_id}, {"_id": 0}).to_list(None)
+
+    if not yachts_list:
+        # Owner senza yacht: response con yachts=[] e yacht=pending per retrocompat
         return OwnerDashboard(
             user=User(**user),
             yacht=Yacht(id="pending", name="Nessuna imbarcazione", model="", owner_id=user_id, marina="", category="", distance="", compliance_score=0),
+            yachts=[],
             active_tickets=[], active_tickets_count=0,
             closed_tickets=[], closed_tickets_total=0,
             season="Stagione 2025",
         )
+
+    # yacht singolare = primo della lista (retrocompat frontend pre-multi-boat)
+    yacht = yachts_list[0]
 
     # Fetch tutti i ticket owner, ordinati per urgency, status, created_at
     pipeline = [
@@ -671,7 +680,8 @@ async def get_owner_dashboard(
 
     return OwnerDashboard(
         user=User(**user),
-        yacht=Yacht(**yacht),
+        yacht=Yacht(**yacht),                              # retrocompat
+        yachts=[Yacht(**y) for y in yachts_list],          # NUOVO multi-boat
         active_tickets=[Ticket(**t) for t in active_list],
         active_tickets_count=len(active_list),
         closed_tickets=[Ticket(**t) for t in closed_paginated],
@@ -788,8 +798,17 @@ async def assign_technician(ticket_id: str, request: AssignTechnicianRequest):
 
 @api_router.post("/tickets/create")
 async def create_generic_ticket(request: CreateTicketRequest, user_id: str):
-    yacht = await db.yachts.find_one({"owner_id": user_id}, {"_id": 0})
-    yacht_id = yacht["id"] if yacht else "pending"
+    # Multi-boat: yacht_id esplicito se passato, altrimenti fallback al primo yacht owner (retrocompat)
+    if request.yacht_id:
+        # Cross-tenant ownership guard: verifica che il yacht appartenga davvero all'owner
+        yacht = await db.yachts.find_one({"id": request.yacht_id, "owner_id": user_id}, {"_id": 0})
+        if not yacht:
+            raise HTTPException(status_code=403, detail="Yacht non trovato o non di tua proprietà")
+        yacht_id = yacht["id"]
+    else:
+        # Fallback retrocompat: primo yacht dell'owner
+        yacht = await db.yachts.find_one({"owner_id": user_id}, {"_id": 0})
+        yacht_id = yacht["id"] if yacht else "pending"
     import random
     ticket_number = random.randint(1000, 9999)
     ticket_id = f"YA-2025-{ticket_number}"
@@ -1349,11 +1368,7 @@ class CreateYachtRequest(BaseModel):
 
 @api_router.post("/yachts/create")
 async def create_yacht(request: CreateYachtRequest, user_id: str):
-    """Crea una nuova imbarcazione per l'owner"""
-    existing = await db.yachts.find_one({"owner_id": user_id})
-    if existing:
-        raise HTTPException(status_code=400, detail="Hai già un'imbarcazione registrata")
-    
+    """Crea una nuova imbarcazione per l'owner. Multi-boat enabled: nessun limite N."""
     yacht_id = f"yacht-{uuid.uuid4().hex[:8]}"
     yacht_doc = {
         "id": yacht_id,
