@@ -1212,28 +1212,15 @@ async def ai_chat(request: ChatRequest):
     if not request.messages:
         raise HTTPException(status_code=400, detail="Nessun messaggio fornito")
     try:
-        print(f"[AI_CHAT_DEBUG] Request received. user_id={request.user_id!r}", flush=True)
         system_prompt = AI_CHAT_SYSTEM_PROMPT_BASE
 
         if request.user_id:
-            print(f"[AI_CHAT_DEBUG] Lookup user with id={request.user_id!r}", flush=True)
             user = await db.users.find_one({"id": request.user_id}, {"_id": 0, "role": 1})
-            print(f"[AI_CHAT_DEBUG] User found: {user!r}", flush=True)
             if user:
                 role = user.get("role")
-                print(f"[AI_CHAT_DEBUG] Role extracted: {role!r}", flush=True)
                 context_block = await _build_user_context(request.user_id, role)
-                print(f"[AI_CHAT_DEBUG] Context block length: {len(context_block) if context_block else 0}", flush=True)
                 if context_block:
-                    print(f"[AI_CHAT_DEBUG] Context block first 200 chars: {context_block[:200]!r}", flush=True)
                     system_prompt = AI_CHAT_SYSTEM_PROMPT_BASE + "\n\n" + context_block
-                    print(f"[AI_CHAT_DEBUG] System prompt enriched, total length: {len(system_prompt)}", flush=True)
-                else:
-                    print(f"[AI_CHAT_DEBUG] Context block empty, using BASE prompt", flush=True)
-            else:
-                print(f"[AI_CHAT_DEBUG] User not found in DB", flush=True)
-        else:
-            print(f"[AI_CHAT_DEBUG] No user_id in request, using BASE prompt", flush=True)
 
         payload = [{"role": m.role, "content": m.content} for m in request.messages]
         message = await asyncio.to_thread(
@@ -1246,7 +1233,6 @@ async def ai_chat(request: ChatRequest):
         reply = message.content[0].text
         return {"reply": reply}
     except Exception as e:
-        print(f"[AI_CHAT_DEBUG] EXCEPTION: {type(e).__name__}: {e}", flush=True)
         logger.error(f"AI chat error: {str(e)}")
         raise HTTPException(status_code=500, detail="Errore AI")
 
