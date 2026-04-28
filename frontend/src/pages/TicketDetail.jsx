@@ -229,9 +229,11 @@ const TicketDetail = () => {
   // Pre-fill appointment location and coords from yacht marina
   useEffect(() => {
     if (yacht?.marina && !appointmentLocation) {
-      setAppointmentLocation(yacht.marina);
-      if (yacht.marina_lat && yacht.marina_lng) {
-        setAppointmentCoords({ lat: yacht.marina_lat, lng: yacht.marina_lng });
+      setAppointmentLocation(ticket.marina || yacht.marina);
+      const fallbackLat = ticket.marina_lat ?? yacht.marina_lat;
+      const fallbackLng = ticket.marina_lng ?? yacht.marina_lng;
+      if (fallbackLat != null && fallbackLng != null) {
+        setAppointmentCoords({ lat: fallbackLat, lng: fallbackLng });
       }
     }
   }, [yacht]);
@@ -443,18 +445,18 @@ const handleAddAttachments = async (files) => {
         </div>
 
         {/* Porto base */}
-        {yacht.marina && (
+        {(ticket.marina || yacht.marina) && (
           <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6">
             <h3 className="text-lg font-semibold text-[#0A2342] mb-4 flex items-center gap-2">
               <MapPin className="w-5 h-5 text-[#1D9E75]" />
               Porto base
             </h3>
-            <p className="text-slate-700 font-medium mb-3">{yacht.marina}</p>
-            {isLoaded && yacht.marina_lat && yacht.marina_lng && (
+            <p className="text-slate-700 font-medium mb-3">{ticket.marina || yacht.marina}</p>
+            {isLoaded && (ticket.marina_lat ?? yacht.marina_lat) != null && (ticket.marina_lng ?? yacht.marina_lng) != null && (
               <div className="rounded-lg overflow-hidden border border-slate-200">
                 <GoogleMap
                   mapContainerStyle={mapContainerStyle}
-                  center={{ lat: yacht.marina_lat, lng: yacht.marina_lng }}
+                  center={{ lat: (ticket.marina_lat ?? yacht.marina_lat), lng: (ticket.marina_lng ?? yacht.marina_lng) }}
                   zoom={14}
                   options={{
                     mapId: 'DEMO_MAP_ID',
@@ -462,7 +464,7 @@ const handleAddAttachments = async (files) => {
                     zoomControl: true,
                   }}
                 >
-                  <AdvancedMarker position={{ lat: yacht.marina_lat, lng: yacht.marina_lng }} />
+                  <AdvancedMarker position={{ lat: (ticket.marina_lat ?? yacht.marina_lat), lng: (ticket.marina_lng ?? yacht.marina_lng) }} />
                 </GoogleMap>
               </div>
             )}
