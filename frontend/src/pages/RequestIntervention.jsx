@@ -126,6 +126,9 @@ const RequestIntervention = () => {
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [selectedSubcategories, setSelectedSubcategories] = useState([]);
   const [marinaCoords, setMarinaCoords] = useState(null);
+  const [yachts, setYachts] = useState([]);
+  const [selectedYachtId, setSelectedYachtId] = useState(null);
+  const [showYachtSwitcher, setShowYachtSwitcher] = useState(false);
 
   const { isLoaded } = useLoadScript({
     googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '',
@@ -142,24 +145,58 @@ const RequestIntervention = () => {
     setMarinaCoords(null);
   }, []);
 
+  const handleYachtSwitch = (yachtId) => {
+    setSelectedYachtId(yachtId);
+    setShowYachtSwitcher(false);
+    // Pre-fill marina del nuovo yacht solo se utente non ha già digitato manualmente
+    const newYacht = yachts.find(y => y.id === yachtId);
+    if (newYacht && newYacht.marina) {
+      setFormData(prev => {
+        if (prev.marina !== '' && prev.marina !== prev.marina) return prev; // rispetta scelta utente custom
+        if (newYacht.marina_lat != null && newYacht.marina_lng != null) {
+          setMarinaCoords({ lat: newYacht.marina_lat, lng: newYacht.marina_lng });
+        }
+        return {
+          ...prev,
+          marina: newYacht.marina,
+          marina_lat: newYacht.marina_lat ?? null,
+          marina_lng: newYacht.marina_lng ?? null,
+        };
+      });
+    }
+  };
+
   useEffect(() => {
     if (!user?.id) return;
     axios.get(`${BACKEND}/dashboard/owner?user_id=${user.id}`)
       .then(res => {
-        const yacht = res.data?.yacht;
-        if (!yacht?.marina) return;
-        setFormData(prev => {
-          if (prev.marina !== '') return prev;
-          if (yacht.marina_lat != null && yacht.marina_lng != null) {
-            setMarinaCoords({ lat: yacht.marina_lat, lng: yacht.marina_lng });
+        // Multi-boat: legge la lista yachts (nuova) e fallback a yacht (singolare retrocompat)
+        const yachtList = res.data?.yachts && res.data.yachts.length > 0
+          ? res.data.yachts
+          : (res.data?.yacht ? [res.data.yacht] : []);
+        setYachts(yachtList);
+
+        // Inizializza selectedYachtId al primo yacht
+        const firstYacht = yachtList[0];
+        if (firstYacht) {
+          setSelectedYachtId(firstYacht.id);
+
+          // Pre-fill marina solo se vuota (rispetta logica esistente)
+          if (firstYacht.marina) {
+            setFormData(prev => {
+              if (prev.marina !== '') return prev;
+              if (firstYacht.marina_lat != null && firstYacht.marina_lng != null) {
+                setMarinaCoords({ lat: firstYacht.marina_lat, lng: firstYacht.marina_lng });
+              }
+              return {
+                ...prev,
+                marina: firstYacht.marina,
+                marina_lat: firstYacht.marina_lat ?? null,
+                marina_lng: firstYacht.marina_lng ?? null,
+              };
+            });
           }
-          return {
-            ...prev,
-            marina: yacht.marina,
-            marina_lat: yacht.marina_lat ?? null,
-            marina_lng: yacht.marina_lng ?? null,
-          };
-        });
+        }
       })
       .catch(err => console.error('Dashboard fetch for pre-pop failed:', err));
   }, [user?.id]);
@@ -259,7 +296,8 @@ const handleSubcategoryConfirm = () => {
         marina: formData.marina,
         marina_lat: formData.marina_lat,
         marina_lng: formData.marina_lng,
-        photos: formData.photos
+        photos: formData.photos,
+        yacht_id: selectedYachtId
       });
       const ticket = response.data.ticket;
       if (formData.selectedTechnician) {
@@ -295,6 +333,74 @@ const handleSubcategoryConfirm = () => {
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-8">
+        {/* Multi-boat: banner selettore yacht persistente */}
+        {yachts.length >= 2 && selectedYachtId && (
+          <div className="mb-6 bg-white border border-slate-200 rounded-lg shadow-sm p-4">
+            {!showYachtSwitcher ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[#0A2342] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Anchor className="w-5 h-5 text-[#1D9E75]" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 mb-0.5">Stai richiedendo intervento per</p>
+                    <p className="font-semibold text-[#0A2342]">
+                      {(yachts.find(y => y.id === selectedYachtId) || {}).name || '—'}
+                      <span className="text-slate-500 font-normal text-sm ml-2">
+                        · {(yachts.find(y => y.id === selectedYachtId) || {}).model || ''}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  data-testid="change-yacht-button"
+                  onClick={() => setShowYachtSwitcher(true)}
+                  className="text-sm text-[#1D9E75] hover:text-[#1D9E75]/80 font-medium px-3 py-1 rounded transition-colors"
+                >
+                  Cambia
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold text-[#0A2342]">Seleziona barca</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowYachtSwitcher(false)}
+                    className="text-xs text-slate-500 hover:text-slate-700"
+                  >
+                    Annulla
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {yachts.map(y => {
+                    const isSelected = y.id === selectedYachtId;
+                    return (
+                      <button
+                        key={y.id}
+                        type="button"
+                        data-testid={`yacht-switcher-${y.id}`}
+                        onClick={() => handleYachtSwitch(y.id)}
+                        className={`text-left px-3 py-2 rounded-lg border transition-all ${
+                          isSelected
+                            ? 'bg-[#0A2342] text-white border-[#1D9E75]'
+                            : 'bg-white text-[#0A2342] border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="font-semibold text-sm">{y.name}</div>
+                        <div className={`text-xs ${isSelected ? 'opacity-85' : 'text-slate-500'}`}>
+                          {y.model} · {y.marina || '—'}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Progress */}
         <div className="flex items-center justify-center mb-8">
           {[1, 2, 3, 4, 5].map((s, idx) => (
