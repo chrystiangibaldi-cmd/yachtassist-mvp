@@ -1293,7 +1293,47 @@ async def reset_demo(secret: str = ""):
     await seed_data(force_reset=True)
     logger.info("Demo data reset to initial state")
     return {"status": "ok", "message": "Demo reset completato"}
-    
+
+
+@api_router.get("/admin/backfill-yacht-coords")
+async def backfill_yacht_coords(secret: str = ""):
+    """Una-tantum: ri-geocodifica yacht con marina popolata ma coords mancanti."""
+    if secret != os.environ.get("RESET_SECRET", "yachtassist-reset-2026"):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+
+    cursor = db.yachts.find({
+        "marina": {"$nin": [None, ""]},
+        "$or": [
+            {"marina_lat": None},
+            {"marina_lng": None},
+            {"marina_lat": {"$exists": False}},
+            {"marina_lng": {"$exists": False}},
+        ],
+    })
+    yachts_to_backfill = await cursor.to_list(length=1000)
+
+    results = {"total": len(yachts_to_backfill), "geocoded": 0, "failed": 0, "details": []}
+
+    for yacht in yachts_to_backfill:
+        yacht_id = yacht.get("id")
+        marina = yacht.get("marina")
+        lat, lng = await _geocode_marina(marina)
+
+        if lat is not None and lng is not None:
+            await db.yachts.update_one(
+                {"id": yacht_id},
+                {"$set": {"marina_lat": lat, "marina_lng": lng}},
+            )
+            results["geocoded"] += 1
+            results["details"].append({"yacht_id": yacht_id, "marina": marina, "status": "OK", "lat": lat, "lng": lng})
+        else:
+            results["failed"] += 1
+            results["details"].append({"yacht_id": yacht_id, "marina": marina, "status": "FAILED"})
+
+    logger.info(f"[BACKFILL] Yacht coords: {results['geocoded']}/{results['total']} geocoded, {results['failed']} failed")
+    return {"status": "ok", **results}
+
+
 @api_router.post("/auth/forgot-password")
 async def forgot_password(request: ForgotPasswordRequest):
     """Invia email di reset password"""
