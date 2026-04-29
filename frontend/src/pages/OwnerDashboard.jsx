@@ -179,7 +179,7 @@ const OwnerDashboard = () => {
               {/* Card Aggiungi barca */}
               <div
                 data-testid="add-yacht-card"
-                onClick={() => navigate('/owner/onboarding-yacht')}
+                onClick={() => navigate('/owner/onboarding')}
                 className="cursor-pointer rounded-lg p-4 bg-white border border-dashed border-slate-300 hover:border-[#0A2342] flex flex-col items-center justify-center text-slate-400 hover:text-[#0A2342] transition-colors min-h-[88px]"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-1">
