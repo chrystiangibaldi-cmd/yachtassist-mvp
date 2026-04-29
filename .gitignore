@@ -88,3 +88,10 @@ prompt_*.txt
 # Local ops scripts (one-shot Mongo tools, non commitabili)
 scripts/cleanup_*.py
 scripts/inspect_*.py
+
+# Multi-boat / feature-specific scratch pads
+multi_boat_*.txt
+*_owner.txt
+*_request.txt
+*_backend.txt
+*_frontend.txt
