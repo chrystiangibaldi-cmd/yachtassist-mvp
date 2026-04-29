@@ -152,7 +152,7 @@ const RequestIntervention = () => {
     const newYacht = yachts.find(y => y.id === yachtId);
     if (newYacht && newYacht.marina) {
       setFormData(prev => {
-        if (prev.marina !== '' && prev.marina !== prev.marina) return prev; // rispetta scelta utente custom
+        // Multi-boat: al cambio yacht sostituisce sempre il porto col nuovo yacht
         if (newYacht.marina_lat != null && newYacht.marina_lng != null) {
           setMarinaCoords({ lat: newYacht.marina_lat, lng: newYacht.marina_lng });
         }
