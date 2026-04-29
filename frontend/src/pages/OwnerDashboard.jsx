@@ -26,6 +26,7 @@ const OwnerDashboard = () => {
   const [closedOffset, setClosedOffset] = useState(0);
   const [showClosed, setShowClosed] = useState(false);
   const [accumulatedClosed, setAccumulatedClosed] = useState([]);
+  const [selectedYachtId, setSelectedYachtId] = useState(null);
 
   const { isLoaded } = useLoadScript({
     googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '',
@@ -40,6 +41,10 @@ const OwnerDashboard = () => {
     try {
       const response = await axios.get(`${BACKEND}/dashboard/owner?user_id=${user.id}&closed_offset=${closedOffset}`);
       setDashboard(response.data);
+      // Multi-boat: inizializza selectedYachtId al primo yacht se non ancora settato
+      if (!selectedYachtId && response.data.yachts && response.data.yachts.length > 0) {
+        setSelectedYachtId(response.data.yachts[0].id);
+      }
       if (closedOffset === 0) {
         setAccumulatedClosed(response.data.closed_tickets);
       } else {
@@ -101,8 +106,13 @@ const OwnerDashboard = () => {
     </div>
   );
 
-  const yachtCoords = dashboard.yacht.marina_lat && dashboard.yacht.marina_lng
-    ? { lat: dashboard.yacht.marina_lat, lng: dashboard.yacht.marina_lng }
+  // Multi-boat: deriva yacht selezionato dalla lista yachts
+  // Fallback retrocompat: se yachts vuoto, usa dashboard.yacht (deprecated singolare backend)
+  const yachts = dashboard.yachts && dashboard.yachts.length > 0 ? dashboard.yachts : [];
+  const selectedYacht = yachts.find(y => y.id === selectedYachtId) || yachts[0] || dashboard.yacht;
+
+  const yachtCoords = selectedYacht && selectedYacht.marina_lat && selectedYacht.marina_lng
+    ? { lat: selectedYacht.marina_lat, lng: selectedYacht.marina_lng }
     : null;
 
   return (
@@ -133,12 +143,61 @@ const OwnerDashboard = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Multi-boat: Le mie barche */}
+        {yachts.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-600">Le mie barche</h3>
+              {yachts.length > 1 && (
+                <span className="text-xs text-slate-400">Tap per selezionare</span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {yachts.map(y => {
+                const isSelected = y.id === selectedYachtId;
+                return (
+                  <div
+                    key={y.id}
+                    data-testid={`yacht-card-${y.id}`}
+                    onClick={() => setSelectedYachtId(y.id)}
+                    className={`cursor-pointer rounded-lg p-4 transition-all ${
+                      isSelected
+                        ? 'bg-[#0A2342] text-white border-2 border-[#1D9E75]'
+                        : 'bg-white text-[#0A2342] border border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="font-semibold text-sm mb-1">{y.name}</div>
+                    <div className={`text-xs mb-2 ${isSelected ? 'opacity-85' : 'text-slate-600'}`}>
+                      {y.model}
+                    </div>
+                    <div className={`text-xs ${isSelected ? 'opacity-70' : 'text-slate-400'}`}>
+                      {y.marina}
+                    </div>
+                  </div>
+                );
+              })}
+              {/* Card Aggiungi barca */}
+              <div
+                data-testid="add-yacht-card"
+                onClick={() => navigate('/owner/onboarding-yacht')}
+                className="cursor-pointer rounded-lg p-4 bg-white border border-dashed border-slate-300 hover:border-[#0A2342] flex flex-col items-center justify-center text-slate-400 hover:text-[#0A2342] transition-colors min-h-[88px]"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-1">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                <span className="text-xs font-semibold">Aggiungi barca</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Compliance Score Card */}
         <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-8 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <h2 className="text-2xl font-semibold text-[#0A2342] mb-2">{dashboard.yacht.name} — {dashboard.yacht.model}</h2>
-              <p className="text-slate-600">{dashboard.yacht.marina} · {dashboard.yacht.category} · {dashboard.yacht.distance}</p>
+              <h2 className="text-2xl font-semibold text-[#0A2342] mb-2">{selectedYacht.name} — {selectedYacht.model}</h2>
+              <p className="text-slate-600">{selectedYacht.marina} · {selectedYacht.category} · {selectedYacht.distance}</p>
             </div>
             <div className="flex flex-col items-center">
               <div className="relative w-32 h-32">
@@ -155,17 +214,17 @@ const OwnerDashboard = () => {
                     cx="64"
                     cy="64"
                     r="56"
-                    stroke={dashboard.yacht.compliance_score >= 80 ? '#1D9E75' : dashboard.yacht.compliance_score >= 60 ? '#F59E0B' : '#EF4444'}
+                    stroke={selectedYacht.compliance_score >= 80 ? '#1D9E75' : selectedYacht.compliance_score >= 60 ? '#F59E0B' : '#EF4444'}
                     strokeWidth="12"
                     fill="none"
                     strokeDasharray={`${2 * Math.PI * 56}`}
-                    strokeDashoffset={`${2 * Math.PI * 56 * (1 - dashboard.yacht.compliance_score / 100)}`}
+                    strokeDashoffset={`${2 * Math.PI * 56 * (1 - selectedYacht.compliance_score / 100)}`}
                     strokeLinecap="round"
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className={`text-3xl font-bold ${getComplianceColor(dashboard.yacht.compliance_score)}`}>
-                    {dashboard.yacht.compliance_score}%
+                  <span className={`text-3xl font-bold ${getComplianceColor(selectedYacht.compliance_score)}`}>
+                    {selectedYacht.compliance_score}%
                   </span>
                 </div>
               </div>
@@ -235,14 +294,23 @@ const OwnerDashboard = () => {
 
         {/* Active Tickets */}
         <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6">
-          <h3 className="text-xl font-semibold text-[#0A2342] mb-4">Ticket attivi</h3>
-          {dashboard.active_tickets.length === 0 ? (
-            <p className="text-slate-500 text-sm">Nessun ticket attivo al momento.</p>
-          ) : (
-            <div className="space-y-4">
-              {dashboard.active_tickets.map(renderTicketCard)}
-            </div>
-          )}
+          <h3 className="text-xl font-semibold text-[#0A2342] mb-4">
+            {selectedYacht && yachts.length > 1 ? `Ticket attivi · ${selectedYacht.name}` : 'Ticket attivi'}
+          </h3>
+          {(() => {
+            const filteredActive = selectedYachtId
+              ? dashboard.active_tickets.filter(t => t.yacht_id === selectedYachtId)
+              : dashboard.active_tickets;
+            return filteredActive.length === 0 ? (
+              <p className="text-slate-500 text-sm">
+                {selectedYacht ? `Nessun ticket attivo per ${selectedYacht.name}.` : 'Nessun ticket attivo al momento.'}
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {filteredActive.map(renderTicketCard)}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Closed Tickets History (collapsible) */}
@@ -275,7 +343,10 @@ const OwnerDashboard = () => {
             </div>
             {showClosed && (
               <div className="px-6 pb-6 space-y-4">
-                {accumulatedClosed.map(renderTicketCard)}
+                {(selectedYachtId
+                  ? accumulatedClosed.filter(t => t.yacht_id === selectedYachtId)
+                  : accumulatedClosed
+                ).map(renderTicketCard)}
                 {accumulatedClosed.length < dashboard.closed_tickets_total && (
                   <Button
                     data-testid="load-more-closed-button"
