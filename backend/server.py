@@ -5,6 +5,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import asyncio
+import httpx
 import resend
 import json
 from pathlib import Path
@@ -31,6 +32,9 @@ SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
 
 # Initialize Anthropic
 anthropic_client = Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
+
+# Google Maps Geocoding API (server-side fallback when client doesn't pass coords)
+GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -83,6 +87,54 @@ def haversine_km(lat1, lng1, lat2, lng2):
     dlng = lng2r - lng1r
     a = sin(dlat/2)**2 + cos(lat1r) * cos(lat2r) * sin(dlng/2)**2
     return round(2 * R * atan2(sqrt(a), sqrt(1-a)), 1)
+
+
+async def _geocode_marina(marina_name: str) -> tuple[Optional[float], Optional[float]]:
+    """
+    Geocode a marina name using Google Geocoding API.
+    Returns (lat, lng) on success, (None, None) on failure.
+    Logs warnings on failure but never raises.
+    """
+    if not GOOGLE_MAPS_API_KEY:
+        logger.warning("[GEOCODE] Skipping: GOOGLE_MAPS_API_KEY not configured")
+        return None, None
+
+    if not marina_name or not marina_name.strip():
+        return None, None
+
+    url = "https://maps.googleapis.com/maps/api/geocode/json"
+    params = {
+        "address": marina_name.strip(),
+        "key": GOOGLE_MAPS_API_KEY,
+        "region": "it",  # bias risultati Italia
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(url, params=params)
+            data = response.json()
+
+        if data.get("status") != "OK":
+            logger.warning(f"[GEOCODE] API error for '{marina_name}': status={data.get('status')}, error_message={data.get('error_message', 'none')}")
+            return None, None
+
+        results = data.get("results", [])
+        if not results:
+            logger.warning(f"[GEOCODE] No results for '{marina_name}'")
+            return None, None
+
+        location = results[0]["geometry"]["location"]
+        lat = location.get("lat")
+        lng = location.get("lng")
+        logger.info(f"[GEOCODE] Success for '{marina_name}': lat={lat}, lng={lng}")
+        return lat, lng
+
+    except httpx.TimeoutException:
+        logger.warning(f"[GEOCODE] Timeout for '{marina_name}'")
+        return None, None
+    except Exception as e:
+        logger.warning(f"[GEOCODE] Unexpected error for '{marina_name}': {type(e).__name__}: {str(e)}")
+        return None, None
 
 
 # Models
@@ -1364,6 +1416,12 @@ async def create_yacht(request: CreateYachtRequest, user_id: str):
         "lunghezza": request.lunghezza,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
+    # Geocoding automatico se coords mancanti (es. yacht creati via curl/import bulk)
+    if yacht_doc.get("marina") and (yacht_doc.get("marina_lat") is None or yacht_doc.get("marina_lng") is None):
+        lat, lng = await _geocode_marina(yacht_doc["marina"])
+        if lat is not None and lng is not None:
+            yacht_doc["marina_lat"] = lat
+            yacht_doc["marina_lng"] = lng
     await db.yachts.insert_one(yacht_doc)
     # Genera checklist D.M. 133/2024 standard per la nuova barca
     checklist_items = [
